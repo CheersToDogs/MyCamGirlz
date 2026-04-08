@@ -726,6 +726,14 @@ document.getElementById('pwbg').addEventListener('click',()=>{if(!S.cd)document.
 document.getElementById('pvcl').addEventListener('click',()=>document.getElementById('pvm').classList.remove('show'));
 document.getElementById('pvbg').addEventListener('click',()=>document.getElementById('pvm').classList.remove('show'));
 
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    hideLegal();
+    document.getElementById('pvm').classList.remove('show');
+    if(!S.cd) document.getElementById('pwm').classList.remove('show');
+  }
+});
+
 document.addEventListener('fullscreenchange',()=>{
   if(document.fullscreenElement){Object.values(S.hls).forEach(h=>h.stopLoad());if(S.at){const h=S.hls[S.at.dataset.u];if(h){h.config.maxBufferLength=60;h.startLoad();}}}
   else Object.values(S.hls).forEach(h=>h.startLoad());
