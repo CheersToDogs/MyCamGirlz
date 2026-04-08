@@ -206,6 +206,47 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 
 /* adjust app height for footer */
 #app{height:calc(100vh - 54px - 40px - 36px)}
+
+/* AUTH MODAL */
+#auth-modal{display:none;position:fixed;inset:0;z-index:300;align-items:center;justify-content:center}
+#auth-modal.show{display:flex}
+.am-card{position:relative;z-index:1;background:var(--bg2);border:1px solid rgba(255,62,138,.22);border-radius:20px;padding:40px 36px 32px;max-width:400px;width:90%;text-align:center;animation:pop .3s cubic-bezier(.34,1.56,.64,1)}
+.am-card::before{content:'';position:absolute;inset:-1px;border-radius:21px;background:linear-gradient(135deg,rgba(255,62,138,.3),rgba(123,47,255,.3),transparent 60%);z-index:-1}
+.am-title{font-family:var(--font-d);font-size:22px;font-weight:900;margin-bottom:8px}
+.am-sub{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:22px}
+.am-form{display:flex;flex-direction:column;gap:10px}
+.am-input{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:14px;padding:12px 16px;border-radius:var(--rsm);outline:none;transition:border-color .15s}
+.am-input:focus{border-color:var(--pink)}
+.am-input::placeholder{color:var(--text3)}
+.am-submit{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:15px;font-weight:800;padding:13px;border:none;border-radius:var(--rp);cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(255,62,138,.4)}
+.am-submit:hover{box-shadow:0 6px 28px rgba(255,62,138,.6);transform:translateY(-1px)}
+.am-submit:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.am-msg{font-size:13px;color:var(--text2);margin-top:10px;min-height:20px}
+.am-msg.ok{color:#6fe87a}
+.am-msg.err{color:var(--pink)}
+.am-close{position:absolute;top:14px;right:14px;background:var(--surface);border:1px solid var(--border);color:var(--text2);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.am-close:hover{background:var(--pink);border-color:var(--pink);color:#fff}
+
+/* SIGNUP UPSELL TILES */
+.signup-tile{background:var(--bg3);border:1px dashed rgba(255,62,138,.3);border-radius:var(--r);aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all .2s;padding:16px;text-align:center}
+.signup-tile:hover{border-color:var(--pink);background:rgba(255,62,138,.05);transform:translateY(-2px)}
+.st-icon{font-size:28px}
+.st-title{font-family:var(--font-d);font-size:13px;font-weight:800;color:var(--text)}
+.st-sub{font-size:11px;color:var(--text2)}
+.st-btn{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:11px;font-weight:800;padding:6px 14px;border-radius:var(--rp);border:none;cursor:pointer;margin-top:4px}
+
+/* USER PILL in header */
+#user-pill{margin-left:4px;display:none;align-items:center;gap:6px;background:rgba(255,62,138,.1);border:1px solid rgba(255,62,138,.25);border-radius:var(--rp);padding:4px 12px;font-size:11px;color:var(--pink-soft);cursor:pointer;flex-shrink:0;transition:all .15s}
+#user-pill:hover{background:rgba(255,62,138,.18)}
+#user-pill.show{display:flex}
+#login-btn{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--rp);cursor:pointer;transition:all .18s;flex-shrink:0;white-space:nowrap}
+#login-btn:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
+
+/* FAVORITE BUTTON on tile */
+.fav-btn{position:absolute;bottom:8px;right:38px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);width:27px;height:27px;border-radius:var(--rsm);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .15s}
+.tile:hover .fav-btn,.fav-btn.on{opacity:1}
+.fav-btn.on{background:rgba(255,62,138,.3);border-color:var(--pink);color:var(--pink)}
+
 </style>
 </head>
 <body>
@@ -243,6 +284,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <select id="esel" class="hsel"><option value="">Ethnicity</option><option value="white">White</option><option value="latina">Latina</option><option value="asian">Asian</option><option value="black">Black</option><option value="middle-eastern">Middle Eastern</option><option value="indian">Indian</option></select>
   <div id="twrap"><span id="tico">🔍</span><input id="ti" type="text" placeholder="Tag… (Enter)"></div>
   <button id="pbtn">⏸</button>
+  <button id="login-btn">Sign In</button>
+  <div id="user-pill"><span id="user-email-short"></span><span style="font-size:9px;margin-left:2px">▾</span></div>
   <span id="lcnt"></span>
   <div id="tpill"><div id="tdot"></div><span id="ttxt">FREE</span></div>
 </div>
@@ -292,6 +335,32 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <a href="mailto:support@mycamgirlz.com">Support</a>
   <span class="fsep">·</span>
   <span style="font-size:10px;color:var(--text3)">© 2026 MyCamGirlz. All models are 18+.</span>
+</div>
+
+
+<!-- AUTH MODAL -->
+<div id="auth-modal">
+  <div class="mbg" id="am-bg"></div>
+  <div class="am-card">
+    <button class="am-close" id="am-close">✕</button>
+    <div class="am-title" id="am-title">Welcome to MyCamGirlz</div>
+    <div class="am-sub" id="am-sub">Enter your email — we'll send you a magic link to sign in instantly. No password needed.</div>
+    <div class="am-form">
+      <input class="am-input" id="am-email" type="email" placeholder="your@email.com" autocomplete="email">
+      <button class="am-submit" id="am-submit">Send Magic Link →</button>
+    </div>
+    <div class="am-msg" id="am-msg"></div>
+    <div style="font-size:10px;color:var(--text3);margin-top:14px;line-height:1.6">By signing up you agree to our <a href="#" onclick="showLegal('tos');return false" style="color:var(--text2)">Terms</a> and <a href="#" onclick="showLegal('privacy');return false" style="color:var(--text2)">Privacy Policy</a>. Adults 18+ only.</div>
+  </div>
+</div>
+
+<!-- USER MENU -->
+<div id="user-menu" style="display:none;position:fixed;top:60px;right:16px;z-index:100;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px;min-width:180px;box-shadow:0 8px 32px rgba(0,0,0,.5)">
+  <div style="padding:8px 12px;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);margin-bottom:6px" id="menu-email"></div>
+  <div style="padding:4px 12px;font-size:12px;color:var(--text2)">Tier: <span id="menu-tier" style="color:var(--pink-soft);font-weight:700"></span></div>
+  <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+    <button onclick="doLogout()" style="width:100%;background:transparent;border:none;color:var(--text2);font-size:12px;padding:6px 12px;text-align:left;cursor:pointer;border-radius:var(--rsm);transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='transparent'">Sign Out</button>
+  </div>
 </div>
 
 <!-- PAYWALL -->
@@ -438,7 +507,11 @@ document.getElementById('ag-enter').addEventListener('click', () => {
 });
 
 // ── VARIANT CONFIG ─────────────────────────────────────
-const V = {id:'v1',free_minutes:2,reset_hours:3,price:9.99,modal_copy:'A',max_free_grid:4};
+const V = {id:'v1',free_minutes:2,reset_hours:3,price:9.99,modal_copy:'A',
+  max_anon_grid:2,    // anonymous: 2x2=4 tiles
+  max_free_grid:4,    // free account: scrolls to show 8 total (2x2 + 4 below)
+  max_paid_grid:6,    // paid: 6x6=36
+};
 const AFF = {id:'',campaign:'mycamgirlz'};
 const aurl = u => AFF.id
   ? `https://go.stripchat.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
@@ -463,10 +536,18 @@ function fp() {
 
 // ── STATE ──────────────────────────────────────────────
 const S = {
-  fp:fp(), paid:false, ta:false, ts:V.free_minutes*60,
-  cd:false, cds:0, n:2, models:[], hls:{}, at:null, paused:false,
+  fp:fp(),
+  // auth state
+  user: null,          // null=anon, {id,email,tier,verified} = logged in
+  paid: false,
+  // timer state
+  ta:false, ts:V.free_minutes*60, cd:false, cds:0,
+  // grid state
+  n:2, models:[], hls:{}, at:null, paused:false,
   f:{gender:'female',sort:'viewersCount',country:'',tag:'',age:'',body:'',ethnicity:''},
-  ws:{}, t0:Date.now()
+  ws:{}, t0:Date.now(),
+  // favorites
+  favorites: new Set(),
 };
 
 // ── SESSION ────────────────────────────────────────────
@@ -587,6 +668,14 @@ function makeTile(m) {
   ctaa.addEventListener('click',e=>{e.stopPropagation();A.track('cta',{u:m.username});});
   ctaw.appendChild(ctaa); tile.appendChild(ctaw);
   tile.appendChild(Object.assign(document.createElement('div'),{className:'bcover'}));
+  // Favorite button
+  const fb = document.createElement('button');
+  fb.className = 'fav-btn';
+  fb.dataset.u = m.username;
+  fb.textContent = S.favorites.has(m.username) ? '♥' : '♡';
+  if (S.favorites.has(m.username)) fb.classList.add('on');
+  fb.addEventListener('click', e => { e.stopPropagation(); toggleFavorite(m.username, fb); });
+  tile.appendChild(fb);
   tile.addEventListener('click',()=>{if(S.cd){showPW('tile');return;} openPV(m); A.track('tile_click',{u:m.username,vc:m.viewersCount});});
   S.ws[m.username]=0;
   const wi=setInterval(()=>{if(!S.paused&&!S.cd)S.ws[m.username]++;},1000); tile._wi=wi;
@@ -630,7 +719,8 @@ function showEmpty(v)   { document.getElementById('empty-state').classList.toggl
 
 async function fetchModels() {
   const f=S.f;
-  const p=new URLSearchParams({limit:String(Math.max(S.n*S.n*3,48)),sortBy:f.sort,gender:f.gender});
+  const realLimit = gridLimit();
+  const p=new URLSearchParams({limit:String(Math.max(realLimit*3,48)),sortBy:f.sort,gender:f.gender});
   if(f.tag) p.set('tag',f.tag);
   if(f.country) p.set('country',f.country);
   const r=await fetch(`https://go.stripchat.com/api/models?${p}`);
@@ -655,7 +745,7 @@ async function load() {
     }
     showLoading(false);
     if(ms.length===0){showEmpty(true);return;}
-    renderGrid(ms.slice(0,S.n*S.n));
+    renderGrid(ms.slice(0,gridLimit()));
     document.getElementById('lcnt').textContent=`${ms.length} live`;
     A.track('loaded',{count:ms.length,n:S.n});
   } catch(e) {
@@ -672,6 +762,17 @@ function renderGrid(ms) {
   g.innerHTML='';
   g.style.gridTemplateColumns=`repeat(${S.n},1fr)`;
   ms.forEach(m=>g.appendChild(makeTile(m)));
+
+  // Append upsell tiles based on tier
+  if (!S.user) {
+    // Anonymous: show 4 signup tiles after 4 real tiles
+    for (let i = 0; i < 4; i++) g.appendChild(makeSignupTile('free'));
+  } else if (!S.paid) {
+    // Free account: show paid upsell tiles after 8 real tiles
+    const needed = S.n * S.n - ms.length;
+    for (let i = 0; i < Math.max(0, needed); i++) g.appendChild(makeSignupTile('paid'));
+  }
+
   if(!S.paid&&!S.cd&&!S.ta) startTimer();
 }
 
@@ -706,7 +807,10 @@ document.getElementById('es-reset-btn').addEventListener('click',resetFilters);
 document.getElementById('gp').addEventListener('click',e=>{
   const b=e.target.closest('.gp'); if(!b) return;
   const n=parseInt(b.dataset.n);
-  if(!S.paid&&n>V.max_free_grid){showPW('grid');A.track('grid_gate',{n});return;}
+  if(n > maxGridN()) {
+    if (!S.user) { showAuthModal('Unlock bigger grids','Sign up free for up to 3×3. Go premium for up to 6×6.'); A.track('grid_gate',{n,tier:'anon'}); return; }
+    if (!S.paid) { showPW('grid'); A.track('grid_gate',{n,tier:'free'}); return; }
+  }
   document.querySelectorAll('.gp').forEach(x=>x.classList.remove('on')); b.classList.add('on');
   S.n=n; load(); A.track('grid_n',{n});
 });
@@ -744,9 +848,263 @@ function fmt(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n);}
 function fmtT(ms){const h=Math.floor(ms/3600000);if(h>=1)return h+'h';return Math.floor(ms/60000)+'m';}
 function flag(c){if(!c||c.length!==2)return'';return String.fromCodePoint(...c.toUpperCase().split('').map(x=>0x1F1E6+x.charCodeAt(0)-65));}
 
+
+
+// ══════════════════════════════════════
+// API CLIENT
+// ══════════════════════════════════════
+const API = '/api';
+
+async function apiPost(path, body) {
+  const r = await fetch(API + path, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.detail || 'Request failed');
+  return d;
+}
+
+async function apiGet(path) {
+  const r = await fetch(API + path, { credentials: 'include' });
+  if (r.status === 401) return null;
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.detail || 'Request failed');
+  return d;
+}
+
+async function apiDelete(path) {
+  const r = await fetch(API + path, { method: 'DELETE', credentials: 'include' });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.detail || 'Request failed');
+  return d;
+}
+
+// ══════════════════════════════════════
+// AUTH INIT — check session on load
+// ══════════════════════════════════════
+async function initAuth() {
+  try {
+    const me = await apiGet('/auth/me');
+    if (me) {
+      S.user = me;
+      S.paid = me.tier === 'paid';
+      onLogin(me);
+      // Load favorites
+      const favData = await apiGet('/favorites');
+      if (favData) {
+        S.favorites = new Set(favData.favorites.map(f => f.username));
+        updateFavButtons();
+      }
+    }
+  } catch(e) {
+    // Not logged in — anonymous state
+  }
+}
+
+function onLogin(user) {
+  // Update header
+  const short = user.email.split('@')[0].slice(0, 14);
+  document.getElementById('user-email-short').textContent = short;
+  document.getElementById('user-pill').classList.add('show');
+  document.getElementById('login-btn').style.display = 'none';
+  document.getElementById('menu-email').textContent = user.email;
+  document.getElementById('menu-tier').textContent = user.tier === 'paid' ? '⭐ Premium' : '🆓 Free';
+  // Re-render grid with new tier limits
+  if (S.models.length) renderGrid(S.models.slice(0, gridLimit()));
+}
+
+function gridLimit() {
+  if (S.paid) return 36;
+  if (S.user) return 8;   // free account
+  return 4;               // anonymous
+}
+
+function maxGridN() {
+  if (S.paid) return 6;
+  if (S.user) return 3;   // free: up to 3x3 but shows signup tiles after 8
+  return 2;               // anon: 2x2 hard cap
+}
+
+// ══════════════════════════════════════
+// AUTH MODAL
+// ══════════════════════════════════════
+function showAuthModal(title, sub) {
+  document.getElementById('am-title').textContent = title || 'Welcome to MyCamGirlz';
+  document.getElementById('am-sub').textContent   = sub || 'Enter your email — we'll send you a magic link instantly. No password needed.';
+  document.getElementById('am-msg').textContent   = '';
+  document.getElementById('am-msg').className     = 'am-msg';
+  document.getElementById('am-email').value       = '';
+  document.getElementById('auth-modal').classList.add('show');
+  setTimeout(() => document.getElementById('am-email').focus(), 100);
+  A.track('auth_modal_shown', { title });
+}
+
+function hideAuthModal() {
+  document.getElementById('auth-modal').classList.remove('show');
+}
+
+document.getElementById('am-close').addEventListener('click', hideAuthModal);
+document.getElementById('am-bg').addEventListener('click', hideAuthModal);
+
+document.getElementById('login-btn').addEventListener('click', () => showAuthModal());
+
+document.getElementById('am-submit').addEventListener('click', sendMagicLink);
+document.getElementById('am-email').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMagicLink();
+});
+
+async function sendMagicLink() {
+  const email = document.getElementById('am-email').value.trim();
+  const msg   = document.getElementById('am-msg');
+  const btn   = document.getElementById('am-submit');
+
+  if (!email || !email.includes('@')) {
+    msg.textContent = 'Please enter a valid email address.';
+    msg.className   = 'am-msg err';
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = 'Sending…';
+  msg.textContent = '';
+
+  try {
+    await apiPost('/auth/magic', { email });
+    msg.textContent = '✓ Check your email — link sent! It expires in 15 minutes.';
+    msg.className   = 'am-msg ok';
+    btn.textContent = 'Sent!';
+    A.track('magic_link_sent', { email_domain: email.split('@')[1] });
+  } catch(e) {
+    msg.textContent = e.message || 'Something went wrong. Try again.';
+    msg.className   = 'am-msg err';
+    btn.disabled    = false;
+    btn.textContent = 'Send Magic Link →';
+  }
+}
+
+// ══════════════════════════════════════
+// USER MENU
+// ══════════════════════════════════════
+document.getElementById('user-pill').addEventListener('click', e => {
+  e.stopPropagation();
+  const m = document.getElementById('user-menu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+});
+
+document.addEventListener('click', () => {
+  document.getElementById('user-menu').style.display = 'none';
+});
+
+async function doLogout() {
+  try { await apiPost('/auth/logout', {}); } catch(e) {}
+  S.user = null; S.paid = false; S.favorites = new Set();
+  document.getElementById('user-pill').classList.remove('show');
+  document.getElementById('login-btn').style.display = '';
+  document.getElementById('user-menu').style.display = 'none';
+  renderGrid(S.models.slice(0, 4));
+  A.track('logout');
+}
+
+// ══════════════════════════════════════
+// FAVORITES
+// ══════════════════════════════════════
+async function toggleFavorite(username, btn) {
+  if (!S.user) {
+    showAuthModal('Save your favorites', 'Sign up free to favorite models and get notified when they go live.');
+    return;
+  }
+  const isOn = S.favorites.has(username);
+  if (isOn) {
+    S.favorites.delete(username);
+    btn.classList.remove('on');
+    btn.textContent = '♡';
+    try { await apiDelete('/favorites/' + username); } catch(e) { S.favorites.add(username); btn.classList.add('on'); btn.textContent = '♥'; }
+  } else {
+    S.favorites.add(username);
+    btn.classList.add('on');
+    btn.textContent = '♥';
+    try { await apiPost('/favorites', { username, notify: true }); } catch(e) { S.favorites.delete(username); btn.classList.remove('on'); btn.textContent = '♡'; }
+  }
+  A.track('favorite_toggle', { username, action: isOn ? 'remove' : 'add' });
+}
+
+function updateFavButtons() {
+  document.querySelectorAll('.fav-btn').forEach(btn => {
+    const username = btn.dataset.u;
+    const on = S.favorites.has(username);
+    btn.classList.toggle('on', on);
+    btn.textContent = on ? '♥' : '♡';
+  });
+}
+
+// ══════════════════════════════════════
+// SIGNUP UPSELL TILES
+// ══════════════════════════════════════
+function makeSignupTile(type) {
+  const tile = document.createElement('div');
+  tile.className = 'signup-tile';
+
+  if (type === 'free') {
+    tile.innerHTML = `
+      <div class="st-icon">🎁</div>
+      <div class="st-title">Sign up free — get 4 more</div>
+      <div class="st-sub">Free account unlocks 8 streams + favorites + notifications</div>
+      <button class="st-btn">Create Free Account</button>
+    `;
+    tile.addEventListener('click', () => {
+      showAuthModal('Get 4 more streams free', 'Create a free account to watch 8 streams, save favorites, and get notified when your favorites go live.');
+      A.track('signup_tile_click', { type: 'free' });
+    });
+  } else {
+    tile.innerHTML = `
+      <div class="st-icon">⭐</div>
+      <div class="st-title">Unlock unlimited streams</div>
+      <div class="st-sub">$9.99/mo — 36 streams, no timers, all filters</div>
+      <button class="st-btn" style="background:linear-gradient(135deg,#ff9800,#ff3e8a)">Go Premium</button>
+    `;
+    tile.addEventListener('click', () => {
+      showPW('signup_tile');
+      A.track('signup_tile_click', { type: 'paid' });
+    });
+  }
+  return tile;
+}
+
+// ══════════════════════════════════════
+// FULLSCREEN SCROLL (arrow keys)
+// ══════════════════════════════════════
+let fsIndex = 0;
+
+document.addEventListener('keydown', e => {
+  if (document.fullscreenElement) {
+    const tiles = [...document.querySelectorAll('.tile')];
+    if (!tiles.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      fsIndex = Math.min(fsIndex + 1, tiles.length - 1);
+      scrollToTile(tiles[fsIndex]);
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      fsIndex = Math.max(fsIndex - 1, 0);
+      scrollToTile(tiles[fsIndex]);
+    }
+  }
+});
+
+function scrollToTile(tile) {
+  tile.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // Auto-unmute the focused tile
+  const vid = tile.querySelector('video');
+  if (vid) toggleAudio(tile, vid);
+}
+
 // ── INIT ───────────────────────────────────────────────
 checkAgeGate();
 loadSess();
+initAuth();
 if(S.cd){tickCD();showPW('resume');}
 load();
 A.track('start',{variant:V.id,ref:document.referrer});
