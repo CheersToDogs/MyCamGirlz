@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MyCamGirlz — Live Multi-Stream Viewer</title>
+<title>MyCamGirlz — Live Cam Grid Viewer</title>
+<meta name="description" content="Watch multiple live cam streams simultaneously. Free multi-stream viewer.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
@@ -21,9 +22,24 @@
 html,body{height:100vh;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden}
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 10% 0%,rgba(123,47,255,.12),transparent 60%),radial-gradient(ellipse 60% 40% at 90% 100%,rgba(255,62,138,.08),transparent 55%);pointer-events:none;z-index:0}
 
+/* AGE GATE */
+#agegate{position:fixed;inset:0;z-index:9999;background:#0a0612;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#agegate.gone{display:none}
+.ag-card{text-align:center;max-width:460px;width:90%;padding:48px 40px;background:var(--bg2);border:1px solid rgba(255,62,138,.2);border-radius:24px;box-shadow:0 0 80px rgba(255,62,138,.08),0 0 160px rgba(123,47,255,.05)}
+.ag-logo{font-family:var(--font-d);font-size:28px;font-weight:900;background:linear-gradient(135deg,var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:28px}
+.ag-icon{font-size:48px;margin-bottom:16px;display:block}
+.ag-title{font-family:var(--font-d);font-size:22px;font-weight:900;margin-bottom:10px}
+.ag-sub{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:32px}
+.ag-yes{width:100%;background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:16px;font-weight:800;padding:15px;border:none;border-radius:var(--rp);cursor:pointer;box-shadow:0 4px 24px rgba(255,62,138,.4);transition:all .2s;margin-bottom:12px}
+.ag-yes:hover{box-shadow:0 6px 34px rgba(255,62,138,.65);transform:translateY(-1px)}
+.ag-no{width:100%;background:transparent;color:var(--text2);font-family:var(--font);font-size:13px;padding:10px;border:1px solid var(--border);border-radius:var(--rp);cursor:pointer;transition:all .15s;text-decoration:none;display:block}
+.ag-no:hover{border-color:var(--text2);color:var(--text)}
+.ag-legal{font-size:11px;color:var(--text3);margin-top:20px;line-height:1.6}
+.ag-legal a{color:var(--text2);text-decoration:underline}
+
 /* HEADER */
 #hdr{position:relative;z-index:20;height:54px;background:rgba(14,9,18,.94);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0}
-#logo{font-family:var(--font-d);font-size:19px;font-weight:900;background:linear-gradient(135deg,var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;flex-shrink:0;letter-spacing:-.3px}
+#logo{font-family:var(--font-d);font-size:19px;font-weight:900;background:linear-gradient(135deg,var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;flex-shrink:0;letter-spacing:-.3px;text-decoration:none;cursor:pointer}
 .hdiv{width:1px;height:22px;background:var(--border);flex-shrink:0}
 #gp{display:flex;gap:4px}
 .gp{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--rp);cursor:pointer;transition:all .18s;white-space:nowrap}
@@ -45,9 +61,21 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 #tdot{width:7px;height:7px;border-radius:50%;background:#6fe87a;flex-shrink:0}
 #tpill.warn #tdot{background:#ff9800}
 #tpill.crit #tdot{background:var(--pink)}
-#pbtn,#lcnt{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:11px;font-weight:500;padding:5px 10px;border-radius:var(--rsm);cursor:pointer;transition:all .15s;flex-shrink:0;white-space:nowrap}
+#pbtn{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:11px;font-weight:500;padding:5px 10px;border-radius:var(--rsm);cursor:pointer;transition:all .15s;flex-shrink:0;white-space:nowrap}
 #pbtn:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
-#lcnt{cursor:default;pointer-events:none}
+#lcnt{font-size:11px;color:var(--text2);white-space:nowrap;flex-shrink:0}
+
+/* mobile: hide some filters */
+@media(max-width:768px){
+  #asel,#bsel,#esel,#twrap,.hdiv:not(:first-of-type){display:none}
+  #hdr{gap:6px;padding:0 10px}
+  .gp{padding:4px 7px;font-size:10px}
+  #logo{font-size:16px}
+}
+@media(max-width:480px){
+  #ssel,#csel{display:none}
+  #gp .gp[data-n="4"],#gp .gp[data-n="6"]{display:none}
+}
 
 /* CAT BAR */
 #cbar{position:relative;z-index:10;background:rgba(21,15,30,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:7px 16px;display:flex;gap:5px;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
@@ -64,6 +92,22 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 #gw::-webkit-scrollbar{width:4px}
 #gw::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:3px}
 #grid{display:grid;gap:9px}
+
+/* LOADING STATE */
+#loading-state{display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:5}
+#loading-state.show{display:flex}
+.ls-spinner{width:44px;height:44px;border:3px solid rgba(255,62,138,.15);border-top-color:var(--pink);border-radius:50%;animation:spin .8s linear infinite}
+.ls-text{font-size:13px;color:var(--text2)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* EMPTY STATE */
+#empty-state{display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:5;text-align:center;padding:20px}
+#empty-state.show{display:flex}
+.es-icon{font-size:48px;opacity:.4}
+.es-title{font-family:var(--font-d);font-size:18px;font-weight:800;color:var(--text2)}
+.es-sub{font-size:13px;color:var(--text3);max-width:300px;line-height:1.6}
+.es-reset{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:12px;padding:8px 18px;border-radius:var(--rp);cursor:pointer;margin-top:8px;transition:all .15s}
+.es-reset:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
 
 /* TILE */
 .tile{position:relative;background:var(--bg3);border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;cursor:pointer;border:1px solid var(--border);transition:transform .2s,border-color .2s,box-shadow .2s}
@@ -83,7 +127,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .ttag{background:rgba(123,47,255,.35);border:1px solid rgba(123,47,255,.5);color:rgba(255,255,255,.85);font-size:9px;font-weight:600;padding:2px 6px;border-radius:var(--rp);cursor:pointer;transition:background .15s;pointer-events:auto}
 .ttag:hover{background:var(--purple)}
 .lbdg{position:absolute;top:8px;left:8px;background:var(--pink);color:#fff;font-family:var(--font-d);font-size:9px;font-weight:900;padding:2px 7px;border-radius:var(--rp);letter-spacing:.8px;text-transform:uppercase;box-shadow:0 0 8px var(--pink-glow)}
-.hdbdg{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
+.hdbdg{position:absolute;top:8px;right:36px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
 .abtn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);width:27px;height:27px;border-radius:var(--rsm);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .15s}
 .tile:hover .abtn,.tile.aa .abtn{opacity:1}
 .abtn:hover,.abtn.on{background:var(--pink);border-color:var(--pink);color:#fff}
@@ -94,7 +138,6 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .ctab:hover{box-shadow:0 6px 26px rgba(255,62,138,.65);filter:brightness(1.1)}
 .tsp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 .sp{width:24px;height:24px;border:2px solid rgba(255,255,255,.1);border-top-color:var(--pink);border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
 .tile.bl .bcover{display:flex}
 .bcover{display:none;position:absolute;inset:0;backdrop-filter:blur(16px) brightness(.45);background:rgba(14,9,18,.55);align-items:center;justify-content:center;border-radius:var(--r)}
 
@@ -141,12 +184,48 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .pmoa{color:var(--text3);font-size:13px}
 .pmcl{position:absolute;top:10px;right:10px;z-index:2;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8);width:28px;height:28px;border-radius:50%;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .pmcl:hover{background:var(--pink);border-color:var(--pink);color:#fff}
+
+/* FOOTER */
+#footer{position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(10,7,16,.95);border-top:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap}
+#footer a{font-size:10px;color:var(--text3);text-decoration:none;transition:color .15s}
+#footer a:hover{color:var(--text2)}
+#footer .fsep{color:var(--text3);font-size:10px}
+
+/* LEGAL PAGES */
+#legal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(8,5,14,.97);overflow-y:auto;padding:40px 20px}
+#legal-overlay.show{display:block}
+.lp-wrap{max-width:720px;margin:0 auto}
+.lp-close{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-size:12px;padding:8px 16px;border-radius:var(--rsm);cursor:pointer;margin-bottom:24px;transition:all .15s}
+.lp-close:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
+.lp-title{font-family:var(--font-d);font-size:24px;font-weight:900;margin-bottom:8px}
+.lp-date{font-size:12px;color:var(--text3);margin-bottom:28px}
+.lp-body{font-size:13px;color:var(--text2);line-height:1.8}
+.lp-body h2{font-family:var(--font-d);font-size:16px;font-weight:800;color:var(--text);margin:24px 0 8px}
+.lp-body p{margin-bottom:12px}
+.lp-body a{color:var(--pink-soft)}
+
+/* adjust app height for footer */
+#app{height:calc(100vh - 54px - 40px - 36px)}
 </style>
 </head>
 <body>
 
+<!-- AGE GATE -->
+<div id="agegate">
+  <div class="ag-card">
+    <div class="ag-logo">MyCamGirlz</div>
+    <span class="ag-icon">🔞</span>
+    <div class="ag-title">Adults Only — 18+</div>
+    <div class="ag-sub">This website contains adult content including nudity and sexually explicit material. You must be at least 18 years of age to enter.</div>
+    <button class="ag-yes" id="ag-enter">I am 18 or older — Enter</button>
+    <a href="https://google.com" class="ag-no">I am under 18 — Exit</a>
+    <div class="ag-legal">By entering you confirm you are 18+ and agree to our <a href="#" onclick="showLegal('tos');return false">Terms of Service</a> and <a href="#" onclick="showLegal('privacy');return false">Privacy Policy</a>. All models are 18+ and have consented to appear on this site.</div>
+  </div>
+</div>
+
+<!-- HEADER -->
 <div id="hdr">
-  <div id="logo">MyCamGirlz</div>
+  <a id="logo" href="/">MyCamGirlz</a>
   <div class="hdiv"></div>
   <div id="gp">
     <button class="gp" data-n="1">1×1</button>
@@ -168,6 +247,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <div id="tpill"><div id="tdot"></div><span id="ttxt">FREE</span></div>
 </div>
 
+<!-- CAT BAR -->
 <div id="cbar">
   <button class="cp on" data-tag="">All</button>
   <button class="cp" data-tag="squirt">💦 Squirt</button>
@@ -185,17 +265,33 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <button class="cp" data-tag="feet">Feet</button>
   <button class="cp" data-tag="hairy">Hairy</button>
   <button class="cp" data-tag="new">✨ New</button>
-  <button class="cp" data-tag="muscle">💪 Muscle</button>
-  <button class="cp" data-tag="daddy">Daddy</button>
   <button class="cp" data-tag="ebony">Ebony</button>
   <button class="cp" data-tag="curvy">Curvy</button>
   <button class="cp" data-tag="petite">Petite</button>
   <button class="cp" data-tag="tattoo">Tattoo</button>
 </div>
 
+<!-- APP -->
 <div id="app">
   <div id="rbar"><div id="rprog"></div></div>
-  <div id="gw"><div id="grid"></div></div>
+  <div id="gw" style="position:relative">
+    <div id="loading-state"><div class="ls-spinner"></div><div class="ls-text">Loading live cams…</div></div>
+    <div id="empty-state"><div class="es-icon">📭</div><div class="es-title">No cams found</div><div class="es-sub">No live models match your current filters. Try a different category or clear your filters.</div><button class="es-reset" id="es-reset-btn">Clear Filters</button></div>
+    <div id="grid"></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div id="footer">
+  <a href="#" onclick="showLegal('tos');return false">Terms of Service</a>
+  <span class="fsep">·</span>
+  <a href="#" onclick="showLegal('privacy');return false">Privacy Policy</a>
+  <span class="fsep">·</span>
+  <a href="#" onclick="showLegal('2257');return false">18 U.S.C. 2257</a>
+  <span class="fsep">·</span>
+  <a href="mailto:support@mycamgirlz.com">Support</a>
+  <span class="fsep">·</span>
+  <span style="font-size:10px;color:var(--text3)">© 2026 MyCamGirlz. All models are 18+.</span>
 </div>
 
 <!-- PAYWALL -->
@@ -237,162 +333,413 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   </div>
 </div>
 
+<!-- LEGAL OVERLAY -->
+<div id="legal-overlay">
+  <div class="lp-wrap">
+    <button class="lp-close" onclick="hideLegal()">← Back</button>
+    <div class="lp-title" id="lp-title"></div>
+    <div class="lp-date">Last updated: April 7, 2026</div>
+    <div class="lp-body" id="lp-body"></div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
-const V={id:'v1',free_minutes:2,reset_hours:3,price:9.99,modal_copy:'A',max_free_grid:4};
-const AFF={id:'',campaign:'mycamgirlz'};
-const aurl=u=>AFF.id?`https://go.stripchat.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`:`https://stripchat.com/${u}`;
+// ── LEGAL CONTENT ──────────────────────────────────────
+const LEGAL = {
+  tos: {
+    title: 'Terms of Service',
+    body: `
+      <h2>1. Acceptance of Terms</h2>
+      <p>By accessing MyCamGirlz ("the Site"), you confirm that you are at least 18 years of age and agree to be bound by these Terms of Service. If you do not agree, you must leave immediately.</p>
+      <h2>2. Age Verification</h2>
+      <p>This site contains sexually explicit material. Access is restricted to adults 18 years of age or older (or the age of majority in your jurisdiction, whichever is greater). By entering, you represent and warrant that you are of legal age.</p>
+      <h2>3. Content</h2>
+      <p>MyCamGirlz aggregates live streams from third-party cam platforms. All models appearing on this site are 18 years of age or older and have consented to appear. MyCamGirlz does not produce, host, or control the content of third-party streams.</p>
+      <h2>4. Prohibited Use</h2>
+      <p>You agree not to use the Site to: (a) record, download, or redistribute streamed content; (b) harass models or other users; (c) circumvent access controls; (d) use automated tools to scrape the Site.</p>
+      <h2>5. Subscriptions</h2>
+      <p>Paid subscriptions are billed monthly. You may cancel at any time. Refunds are not provided for partial billing periods. Payment processing is handled by third-party processors; we do not store payment card data.</p>
+      <h2>6. Disclaimer</h2>
+      <p>The Site is provided "as is" without warranties of any kind. We do not guarantee uninterrupted access to streams. We are not responsible for the content of third-party platforms.</p>
+      <h2>7. Governing Law</h2>
+      <p>These Terms are governed by the laws of the State of Wyoming, USA. Any disputes shall be resolved in the courts of Wyoming.</p>
+      <h2>8. Contact</h2>
+      <p>For questions regarding these Terms, contact <a href="mailto:legal@mycamgirlz.com">legal@mycamgirlz.com</a>.</p>
+    `
+  },
+  privacy: {
+    title: 'Privacy Policy',
+    body: `
+      <h2>1. Information We Collect</h2>
+      <p>We collect: (a) information you provide when subscribing (email address, billing information processed by our payment processor); (b) automatically collected data including IP address, browser type, device fingerprint, and usage analytics.</p>
+      <h2>2. How We Use Information</h2>
+      <p>We use collected information to: provide and improve the Service; process payments; enforce our Terms of Service; prevent fraud; send service-related communications.</p>
+      <h2>3. Cookies</h2>
+      <p>We use cookies and local storage to maintain your session state, remember your preferences, and enforce free-tier limits. We do not use third-party advertising cookies.</p>
+      <h2>4. Data Sharing</h2>
+      <p>We do not sell your personal data. We share data only with: payment processors (CCBill/Segpay) as necessary to process transactions; analytics providers (self-hosted); and law enforcement when legally required.</p>
+      <h2>5. Data Retention</h2>
+      <p>Session data is retained for 90 days. Account data is retained for the duration of your subscription plus 30 days following cancellation.</p>
+      <h2>6. Your Rights</h2>
+      <p>You may request deletion of your data by contacting <a href="mailto:privacy@mycamgirlz.com">privacy@mycamgirlz.com</a>. We will respond within 30 days.</p>
+      <h2>7. Security</h2>
+      <p>We use industry-standard security measures including TLS encryption and Cloudflare DDoS protection. We do not store payment card data.</p>
+      <h2>8. Contact</h2>
+      <p>Privacy inquiries: <a href="mailto:privacy@mycamgirlz.com">privacy@mycamgirlz.com</a>.</p>
+    `
+  },
+  '2257': {
+    title: '18 U.S.C. 2257 Compliance Statement',
+    body: `
+      <h2>Exemption Statement</h2>
+      <p>MyCamGirlz is not a producer (primary or secondary) of any of the sexually explicit content displayed on this website as defined in 18 U.S.C. § 2257 and 28 C.F.R. Part 75.</p>
+      <p>MyCamGirlz is a technology platform that displays third-party live streams from external cam platforms. MyCamGirlz does not produce, film, direct, or host any original content.</p>
+      <p>For content appearing on this site, all records required by 18 U.S.C. § 2257 and 28 C.F.R. Part 75 are maintained by the respective content producers. These include:</p>
+      <ul style="margin:12px 0 12px 20px;color:var(--text2)">
+        <li style="margin-bottom:6px">Stripchat / HC Trading Malta Ltd — <a href="https://stripchat.com/docs/2257" target="_blank">stripchat.com/docs/2257</a></li>
+      </ul>
+      <p>All models appearing on this site are 18 years of age or older. Age verification is performed by the originating platforms.</p>
+      <h2>Custodian of Records</h2>
+      <p>For compliance inquiries, contact:<br>
+      MyCamGirlz<br>
+      Email: <a href="mailto:legal@mycamgirlz.com">legal@mycamgirlz.com</a></p>
+    `
+  }
+};
 
-const A={ep:null,track(ev,p={}){const d={event:ev,variant:V.id,fp:S.fp,tier:S.paid?'paid':'free',ts:Date.now(),...p};if(this.ep)fetch(this.ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d),keepalive:true}).catch(()=>{})}};
+function showLegal(page) {
+  const d = LEGAL[page];
+  if (!d) return;
+  document.getElementById('lp-title').textContent = d.title;
+  document.getElementById('lp-body').innerHTML = d.body;
+  document.getElementById('legal-overlay').classList.add('show');
+}
 
-function fp(){const s=[navigator.userAgent,navigator.language,screen.width+'x'+screen.height,screen.colorDepth,new Date().getTimezoneOffset(),navigator.hardwareConcurrency||'',navigator.deviceMemory||''].join('|');let h=0;for(let i=0;i<s.length;i++)h=Math.imul(31,h)+s.charCodeAt(i)|0;return Math.abs(h).toString(36)}
+function hideLegal() {
+  document.getElementById('legal-overlay').classList.remove('show');
+}
 
-const S={fp:fp(),paid:false,ta:false,ts:V.free_minutes*60,cd:false,cds:0,n:2,models:[],hls:{},at:null,paused:false,f:{gender:'female',sort:'viewersCount',country:'',tag:'',age:'',body:'',ethnicity:''},ws:{},t0:Date.now()};
+// ── AGE GATE ───────────────────────────────────────────
+const AG_KEY = 'mcg_age';
+function checkAgeGate() {
+  if (localStorage.getItem(AG_KEY) === '1') {
+    document.getElementById('agegate').classList.add('gone');
+    return;
+  }
+  // show gate
+}
 
-const SK='mcg_s';
-function loadSess(){try{const r=localStorage.getItem(SK);if(!r)return;const d=JSON.parse(r);if(d.fp!==S.fp)return;S.paid=d.paid||false;if(!S.paid){const n=Date.now();if(d.cu&&d.cu>n){S.cd=true;S.cds=Math.ceil((d.cu-n)/1000);S.ts=0}else if(d.ex&&d.ex>n){S.ts=Math.ceil((d.ex-n)/1000);S.ta=true}}}catch(e){}}
-function saveSess(o={}){const d={fp:S.fp,paid:S.paid,ts:Date.now()};if(o.cu)d.cu=o.cu;if(o.ex)d.ex=o.ex;localStorage.setItem(SK,JSON.stringify(d));if(o.cu){const e=new Date(o.cu).toUTCString();document.cookie=`mcgfp=${S.fp}; expires=${e}; path=/; SameSite=Strict`}}
+document.getElementById('ag-enter').addEventListener('click', () => {
+  localStorage.setItem(AG_KEY, '1');
+  document.getElementById('agegate').classList.add('gone');
+  A.track('age_gate_accept');
+});
 
-let tiv=null;
-function startTimer(){if(S.paid||S.ta)return;S.ta=true;const ex=Date.now()+S.ts*1000;saveSess({ex});A.track('free_start',{mins:V.free_minutes});tiv=setInterval(tickT,1000);renderT()}
-function tickT(){if(S.ts<=0){clearInterval(tiv);expireT();return}S.ts--;renderT()}
-function renderT(){const pill=document.getElementById('tpill'),dot=document.getElementById('tdot'),txt=document.getElementById('ttxt');if(S.paid){pill.className='paid';dot.style.background='#6fe87a';txt.textContent='∞ Unlimited';return}const m=Math.floor(S.ts/60),s=S.ts%60;txt.textContent=`${m}:${String(s).padStart(2,'0')} free`;if(S.ts<=10)pill.className='crit';else if(S.ts<=30)pill.className='warn';else pill.className=''}
-function expireT(){const cu=Date.now()+V.reset_hours*3600000;S.cd=true;S.cds=V.reset_hours*3600;saveSess({cu});document.querySelectorAll('.tile').forEach(t=>t.classList.add('bl'));haltAll();A.track('expired',{w:S.ws});showPW('expired');tickCD()}
-function tickCD(){const clk=document.getElementById('rclk'),inl=document.getElementById('rcinl');document.getElementById('cdl').style.display='block';const t=()=>{if(S.cds<=0){S.cd=false;S.ts=V.free_minutes*60;S.ta=false;document.getElementById('pwm').classList.remove('show');document.querySelectorAll('.tile').forEach(t=>t.classList.remove('bl'));resumeAll();startTimer();A.track('reset');return}S.cds--;const h=Math.floor(S.cds/3600),m=Math.floor((S.cds%3600)/60),s=S.cds%60,str=`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;if(clk)clk.textContent=str;if(inl)inl.textContent=str;setTimeout(t,1000)};t()}
-function showPW(trig){document.getElementById('mpn').textContent=V.price.toFixed(2);document.getElementById('ctap').textContent=V.price.toFixed(2);const h=document.getElementById('rsinl');if(h)h.textContent=V.reset_hours+'h';document.getElementById('pwm').classList.add('show');A.track('paywall',{trig,copy:V.modal_copy})}
+// ── VARIANT CONFIG ─────────────────────────────────────
+const V = {id:'v1',free_minutes:2,reset_hours:3,price:9.99,modal_copy:'A',max_free_grid:4};
+const AFF = {id:'',campaign:'mycamgirlz'};
+const aurl = u => AFF.id
+  ? `https://go.stripchat.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
+  : `https://stripchat.com/${u}`;
 
-function destroyAll(){Object.values(S.hls).forEach(h=>{try{h.destroy()}catch(e){}});S.hls={};S.at=null}
-function haltAll(){document.querySelectorAll('#grid video').forEach(v=>v.pause())}
-function resumeAll(){document.querySelectorAll('#grid video').forEach(v=>v.play().catch(()=>{}))}
-function getUrl(m){const u=m.stream&&m.stream.urls;if(!u)return null;return u.original||u['720p']||u['480p']||u['240p']||null}
+// ── ANALYTICS ──────────────────────────────────────────
+const A = {
+  ep: null,
+  track(ev, p={}) {
+    const d = {event:ev,variant:V.id,fp:S.fp,tier:S.paid?'paid':'free',ts:Date.now(),...p};
+    if (this.ep) fetch(this.ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d),keepalive:true}).catch(()=>{});
+  }
+};
 
-function makeTile(m){
-  const tile=document.createElement('div');tile.className='tile';tile.dataset.u=m.username;
-  const snap=document.createElement('div');snap.className='snap';
-  const su=m.snapshotUrl||m.widgetPreviewUrl||'';if(su)snap.style.backgroundImage=`url(${su})`;
+// ── FINGERPRINT ────────────────────────────────────────
+function fp() {
+  const s = [navigator.userAgent,navigator.language,screen.width+'x'+screen.height,screen.colorDepth,new Date().getTimezoneOffset(),navigator.hardwareConcurrency||'',navigator.deviceMemory||''].join('|');
+  let h = 0;
+  for (let i=0;i<s.length;i++) h = Math.imul(31,h)+s.charCodeAt(i)|0;
+  return Math.abs(h).toString(36);
+}
+
+// ── STATE ──────────────────────────────────────────────
+const S = {
+  fp:fp(), paid:false, ta:false, ts:V.free_minutes*60,
+  cd:false, cds:0, n:2, models:[], hls:{}, at:null, paused:false,
+  f:{gender:'female',sort:'viewersCount',country:'',tag:'',age:'',body:'',ethnicity:''},
+  ws:{}, t0:Date.now()
+};
+
+// ── SESSION ────────────────────────────────────────────
+const SK = 'mcg_s';
+function loadSess() {
+  try {
+    const r = localStorage.getItem(SK); if (!r) return;
+    const d = JSON.parse(r); if (d.fp !== S.fp) return;
+    S.paid = d.paid || false;
+    if (!S.paid) {
+      const n = Date.now();
+      if (d.cu && d.cu > n) { S.cd=true; S.cds=Math.ceil((d.cu-n)/1000); S.ts=0; }
+      else if (d.ex && d.ex > n) { S.ts=Math.ceil((d.ex-n)/1000); S.ta=true; }
+    }
+  } catch(e) {}
+}
+
+function saveSess(o={}) {
+  const d = {fp:S.fp,paid:S.paid,ts:Date.now()};
+  if (o.cu) d.cu = o.cu;
+  if (o.ex) d.ex = o.ex;
+  localStorage.setItem(SK, JSON.stringify(d));
+  if (o.cu) { const e=new Date(o.cu).toUTCString(); document.cookie=`mcgfp=${S.fp}; expires=${e}; path=/; SameSite=Strict`; }
+}
+
+// ── TIMER ──────────────────────────────────────────────
+let tiv = null;
+function startTimer() {
+  if (S.paid||S.ta) return;
+  S.ta = true;
+  const ex = Date.now() + S.ts*1000;
+  saveSess({ex});
+  A.track('free_start',{mins:V.free_minutes});
+  tiv = setInterval(tickT, 1000);
+  renderT();
+}
+
+function tickT() { if (S.ts<=0){clearInterval(tiv);expireT();return} S.ts--; renderT(); }
+
+function renderT() {
+  const pill=document.getElementById('tpill'),dot=document.getElementById('tdot'),txt=document.getElementById('ttxt');
+  if (S.paid){pill.className='paid';dot.style.background='#6fe87a';txt.textContent='∞ Unlimited';return}
+  const m=Math.floor(S.ts/60),s=S.ts%60;
+  txt.textContent=`${m}:${String(s).padStart(2,'0')} free`;
+  if(S.ts<=10) pill.className='crit';
+  else if(S.ts<=30) pill.className='warn';
+  else pill.className='';
+}
+
+function expireT() {
+  const cu = Date.now()+V.reset_hours*3600000;
+  S.cd=true; S.cds=V.reset_hours*3600;
+  saveSess({cu});
+  document.querySelectorAll('.tile').forEach(t=>t.classList.add('bl'));
+  haltAll();
+  A.track('expired',{w:S.ws});
+  showPW('expired');
+  tickCD();
+}
+
+function tickCD() {
+  const clk=document.getElementById('rclk'),inl=document.getElementById('rcinl');
+  document.getElementById('cdl').style.display='block';
+  const t = () => {
+    if (S.cds<=0) {
+      S.cd=false; S.ts=V.free_minutes*60; S.ta=false;
+      document.getElementById('pwm').classList.remove('show');
+      document.querySelectorAll('.tile').forEach(t=>t.classList.remove('bl'));
+      resumeAll(); startTimer(); A.track('reset'); return;
+    }
+    S.cds--;
+    const h=Math.floor(S.cds/3600),m=Math.floor((S.cds%3600)/60),s=S.cds%60;
+    const str=`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    if(clk) clk.textContent=str;
+    if(inl) inl.textContent=str;
+    setTimeout(t,1000);
+  };
+  t();
+}
+
+function showPW(trig) {
+  document.getElementById('mpn').textContent=V.price.toFixed(2);
+  document.getElementById('ctap').textContent=V.price.toFixed(2);
+  const h=document.getElementById('rsinl'); if(h) h.textContent=V.reset_hours+'h';
+  document.getElementById('pwm').classList.add('show');
+  A.track('paywall',{trig,copy:V.modal_copy});
+}
+
+// ── HLS ────────────────────────────────────────────────
+function destroyAll() { Object.values(S.hls).forEach(h=>{try{h.destroy()}catch(e){}}); S.hls={}; S.at=null; }
+function haltAll() { document.querySelectorAll('#grid video').forEach(v=>v.pause()); }
+function resumeAll() { document.querySelectorAll('#grid video').forEach(v=>v.play().catch(()=>{})); }
+function getUrl(m) { const u=m.stream&&m.stream.urls; if(!u) return null; return u.original||u['720p']||u['480p']||u['240p']||null; }
+
+// ── TILE ───────────────────────────────────────────────
+function makeTile(m) {
+  const tile=document.createElement('div'); tile.className='tile'; tile.dataset.u=m.username;
+  const snap=document.createElement('div'); snap.className='snap';
+  const su=m.snapshotUrl||m.widgetPreviewUrl||''; if(su) snap.style.backgroundImage=`url(${su})`;
   tile.appendChild(snap);
-  const vid=document.createElement('video');vid.muted=true;vid.playsInline=true;vid.autoplay=true;tile.appendChild(vid);
-  const sp=document.createElement('div');sp.className='tsp';sp.innerHTML='<div class="sp"></div>';tile.appendChild(sp);
-  const gr=document.createElement('div');gr.className='tgrad';tile.appendChild(gr);
-  const lb=document.createElement('div');lb.className='lbdg';lb.textContent='LIVE';tile.appendChild(lb);
-  if(m.broadcastHD||(m.stream&&m.stream.urls&&m.stream.urls['720p'])){const hd=document.createElement('div');hd.className='hdbdg';hd.textContent='HD';tile.appendChild(hd)}
-  const ab=document.createElement('button');ab.className='abtn';ab.textContent='🔇';
-  ab.addEventListener('click',e=>{e.stopPropagation();toggleAudio(tile,vid)});tile.appendChild(ab);
+  const vid=document.createElement('video'); vid.muted=true; vid.playsInline=true; vid.autoplay=true; tile.appendChild(vid);
+  const sp=document.createElement('div'); sp.className='tsp'; sp.innerHTML='<div class="sp"></div>'; tile.appendChild(sp);
+  tile.appendChild(Object.assign(document.createElement('div'),{className:'tgrad'}));
+  tile.appendChild(Object.assign(document.createElement('div'),{className:'lbdg',textContent:'LIVE'}));
+  if(m.broadcastHD||(m.stream&&m.stream.urls&&m.stream.urls['720p'])){
+    tile.appendChild(Object.assign(document.createElement('div'),{className:'hdbdg',textContent:'HD'}));
+  }
+  const ab=document.createElement('button'); ab.className='abtn'; ab.textContent='🔇';
+  ab.addEventListener('click',e=>{e.stopPropagation();toggleAudio(tile,vid);}); tile.appendChild(ab);
   const tags=(m.tags||m.categories||[]).slice(0,4);
-  const info=document.createElement('div');info.className='tinfo';
+  const info=document.createElement('div'); info.className='tinfo';
   info.innerHTML=`<div class="tname">${m.username}</div><div class="tstats">${m.viewersCount?`<span class="tvc">👁 ${fmt(m.viewersCount)}</span>`:''} ${m.country?`<span class="tst">${flag(m.country)}</span>`:''} ${m.age?`<span class="tst">${m.age}yo</span>`:''} ${m.onlineTime?`<span class="tst">⏱${fmtT(m.onlineTime)}</span>`:''}</div><div class="ttags">${tags.map(t=>`<span class="ttag" data-tag="${t}">${t}</span>`).join('')}</div>`;
   tile.appendChild(info);
-  info.querySelectorAll('.ttag').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();setTag(el.dataset.tag);A.track('tag',{tag:el.dataset.tag})}));
-  const ctaw=document.createElement('div');ctaw.className='tcta';
-  const ctaa=document.createElement('a');ctaa.className='ctab';ctaa.textContent='🔒 Go Private';ctaa.href=aurl(m.username);ctaa.target='_blank';ctaa.rel='noopener';
-  ctaa.addEventListener('click',e=>{e.stopPropagation();A.track('cta',{u:m.username})});
-  ctaw.appendChild(ctaa);tile.appendChild(ctaw);
-  const bc=document.createElement('div');bc.className='bcover';tile.appendChild(bc);
-  tile.addEventListener('click',()=>{if(S.cd){showPW('tile');return}openPV(m);A.track('tile_click',{u:m.username,vc:m.viewersCount})});
-  S.ws[m.username]=0;const wi=setInterval(()=>{if(!S.paused&&!S.cd)S.ws[m.username]++},1000);tile._wi=wi;
+  info.querySelectorAll('.ttag').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();setTag(el.dataset.tag);A.track('tag',{tag:el.dataset.tag});}));
+  const ctaw=document.createElement('div'); ctaw.className='tcta';
+  const ctaa=document.createElement('a'); ctaa.className='ctab'; ctaa.textContent='🔒 Go Private';
+  ctaa.href=aurl(m.username); ctaa.target='_blank'; ctaa.rel='noopener';
+  ctaa.addEventListener('click',e=>{e.stopPropagation();A.track('cta',{u:m.username});});
+  ctaw.appendChild(ctaa); tile.appendChild(ctaw);
+  tile.appendChild(Object.assign(document.createElement('div'),{className:'bcover'}));
+  tile.addEventListener('click',()=>{if(S.cd){showPW('tile');return;} openPV(m); A.track('tile_click',{u:m.username,vc:m.viewersCount});});
+  S.ws[m.username]=0;
+  const wi=setInterval(()=>{if(!S.paused&&!S.cd)S.ws[m.username]++;},1000); tile._wi=wi;
   const url=getUrl(m);
-  if(url&&Hls.isSupported()){const h=new Hls({strictManifestParsing:false,maxBufferLength:10,maxMaxBufferLength:20,liveSyncDurationCount:3});h.loadSource(url);h.attachMedia(vid);h.on(Hls.Events.MANIFEST_PARSED,()=>{vid.play().catch(()=>{});snap.classList.add('h');sp.remove()});h.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal)snap.classList.remove('h')});S.hls[m.username]=h}
-  else if(vid.canPlayType('application/vnd.apple.mpegurl')){vid.src=url;vid.play().catch(()=>{});snap.classList.add('h');sp.remove()}
-  if(S.cd)tile.classList.add('bl');
-  return tile
+  if(url&&Hls.isSupported()){
+    const h=new Hls({strictManifestParsing:false,maxBufferLength:10,maxMaxBufferLength:20,liveSyncDurationCount:3});
+    h.loadSource(url); h.attachMedia(vid);
+    h.on(Hls.Events.MANIFEST_PARSED,()=>{vid.play().catch(()=>{});snap.classList.add('h');sp.remove();});
+    h.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal)snap.classList.remove('h');});
+    S.hls[m.username]=h;
+  } else if(vid.canPlayType('application/vnd.apple.mpegurl')){
+    vid.src=url; vid.play().catch(()=>{}); snap.classList.add('h'); sp.remove();
+  }
+  if(S.cd) tile.classList.add('bl');
+  return tile;
 }
 
-function toggleAudio(tile,vid){
+// ── AUDIO ──────────────────────────────────────────────
+function toggleAudio(tile,vid) {
   const was=S.at===tile;
-  document.querySelectorAll('.tile').forEach(t=>{t.classList.remove('aa');const b=t.querySelector('.abtn');if(b){b.textContent='🔇';b.classList.remove('on')}});
-  document.querySelectorAll('#grid video').forEach(v=>{v.muted=true});S.at=null;
-  if(!was){vid.muted=false;tile.classList.add('aa');const b=tile.querySelector('.abtn');if(b){b.textContent='🔊';b.classList.add('on')}S.at=tile;tile.parentElement.prepend(tile);A.track('audio',{u:tile.dataset.u})}
+  document.querySelectorAll('.tile').forEach(t=>{t.classList.remove('aa');const b=t.querySelector('.abtn');if(b){b.textContent='🔇';b.classList.remove('on');}});
+  document.querySelectorAll('#grid video').forEach(v=>{v.muted=true;}); S.at=null;
+  if(!was){vid.muted=false;tile.classList.add('aa');const b=tile.querySelector('.abtn');if(b){b.textContent='🔊';b.classList.add('on');}S.at=tile;tile.parentElement.prepend(tile);A.track('audio',{u:tile.dataset.u});}
 }
 
-function openPV(m){
+// ── PRIVATE MODAL ──────────────────────────────────────
+function openPV(m) {
   const su=m.snapshotUrl||m.widgetPreviewUrl||'';
   document.getElementById('pvsnap').style.backgroundImage=su?`url(${su})`:'';
   document.getElementById('pvname').textContent=m.username;
   document.getElementById('pvmeta').textContent=[m.age?m.age+'yo':null,m.country,m.viewersCount?fmt(m.viewersCount)+' watching':null,m.ethnicity].filter(Boolean).join(' · ');
   const u=aurl(m.username);
-  ['pvpriv','pvspy','pvtip','pvpro'].forEach(id=>{document.getElementById(id).href=u;document.getElementById(id).onclick=()=>A.track('pm_click',{u:m.username,id})});
-  document.getElementById('pvm').classList.add('show');A.track('pm_open',{u:m.username})
+  ['pvpriv','pvspy','pvtip','pvpro'].forEach(id=>{document.getElementById(id).href=u;document.getElementById(id).onclick=()=>A.track('pm_click',{u:m.username,id});});
+  document.getElementById('pvm').classList.add('show');
+  A.track('pm_open',{u:m.username});
 }
 
-async function fetchModels(){
+// ── FETCH + RENDER ─────────────────────────────────────
+function showLoading(v) { document.getElementById('loading-state').classList.toggle('show',v); }
+function showEmpty(v)   { document.getElementById('empty-state').classList.toggle('show',v); }
+
+async function fetchModels() {
   const f=S.f;
-  const p=new URLSearchParams({limit:String(S.n*S.n*3),sortBy:f.sort,gender:f.gender});
-  if(f.tag)p.set('tag',f.tag);if(f.country)p.set('country',f.country);
+  const p=new URLSearchParams({limit:String(Math.max(S.n*S.n*3,48)),sortBy:f.sort,gender:f.gender});
+  if(f.tag) p.set('tag',f.tag);
+  if(f.country) p.set('country',f.country);
   const r=await fetch(`https://go.stripchat.com/api/models?${p}`);
-  if(!r.ok)throw new Error(r.status);
+  if(!r.ok) throw new Error(r.status);
   const d=await r.json();
   let ms=d.models||d.data||[];
   ms=ms.filter(m=>m.status==='public'&&m.gender===f.gender&&m.stream&&m.stream.urls);
-  if(f.body)ms=ms.filter(m=>(m.bodyType||'').toLowerCase()===f.body);
-  if(f.ethnicity)ms=ms.filter(m=>(m.ethnicity||'').toLowerCase()===f.ethnicity);
-  if(f.age){const[lo,hi]=f.age==='40+'?[40,99]:f.age.split('-').map(Number);ms=ms.filter(m=>m.age>=lo&&m.age<=hi)}
-  return ms
+  if(f.body) ms=ms.filter(m=>(m.bodyType||'').toLowerCase()===f.body);
+  if(f.ethnicity) ms=ms.filter(m=>(m.ethnicity||'').toLowerCase()===f.ethnicity);
+  if(f.age){const[lo,hi]=f.age==='40+'?[40,99]:f.age.split('-').map(Number);ms=ms.filter(m=>m.age>=lo&&m.age<=hi);}
+  return ms;
 }
 
-async function load(){
-  try{
-    const ms=await fetchModels();S.models=ms;
+async function load() {
+  showLoading(true); showEmpty(false);
+  try {
+    const ms=await fetchModels(); S.models=ms;
     const cs=document.getElementById('csel');
-    if(cs.options.length===1&&ms.length){const countries=[...new Set(ms.map(m=>m.country).filter(Boolean))].sort();countries.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=flag(c)+' '+c;cs.appendChild(o)})}
+    if(cs.options.length===1&&ms.length){
+      const countries=[...new Set(ms.map(m=>m.country).filter(Boolean))].sort();
+      countries.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=flag(c)+' '+c;cs.appendChild(o);});
+    }
+    showLoading(false);
+    if(ms.length===0){showEmpty(true);return;}
     renderGrid(ms.slice(0,S.n*S.n));
     document.getElementById('lcnt').textContent=`${ms.length} live`;
-    A.track('loaded',{count:ms.length,n:S.n})
-  }catch(e){console.error(e)}
+    A.track('loaded',{count:ms.length,n:S.n});
+  } catch(e) {
+    showLoading(false);
+    showEmpty(true);
+    console.error(e);
+  }
 }
 
-function renderGrid(ms){
-  document.querySelectorAll('.tile').forEach(t=>{if(t._wi)clearInterval(t._wi)});
+function renderGrid(ms) {
+  document.querySelectorAll('.tile').forEach(t=>{if(t._wi)clearInterval(t._wi);});
   destroyAll();
-  const g=document.getElementById('grid');g.innerHTML='';g.style.gridTemplateColumns=`repeat(${S.n},1fr)`;
+  const g=document.getElementById('grid');
+  g.innerHTML='';
+  g.style.gridTemplateColumns=`repeat(${S.n},1fr)`;
   ms.forEach(m=>g.appendChild(makeTile(m)));
-  if(!S.paid&&!S.cd&&!S.ta)startTimer()
+  if(!S.paid&&!S.cd&&!S.ta) startTimer();
 }
 
-const RI=60;let rc=RI;
-setInterval(()=>{rc--;document.getElementById('rprog').style.width=(rc/RI*100)+'%';if(rc<=0){rc=RI;if(!S.paused)load()}},1000);
+// ── REFRESH ────────────────────────────────────────────
+const RI=60; let rc=RI;
+setInterval(()=>{rc--;document.getElementById('rprog').style.width=(rc/RI*100)+'%';if(rc<=0){rc=RI;if(!S.paused)load();}},1000);
 
+// ── EVENTS ─────────────────────────────────────────────
 document.getElementById('cbar').addEventListener('click',e=>{
-  const p=e.target.closest('.cp');if(!p)return;
-  document.querySelectorAll('.cp').forEach(x=>x.classList.remove('on'));p.classList.add('on');
-  setTag(p.dataset.tag);A.track('cat',{tag:p.dataset.tag})
+  const p=e.target.closest('.cp'); if(!p) return;
+  document.querySelectorAll('.cp').forEach(x=>x.classList.remove('on')); p.classList.add('on');
+  setTag(p.dataset.tag); A.track('cat',{tag:p.dataset.tag});
 });
 
-function setTag(tag){S.f.tag=tag||'';document.getElementById('ti').value=tag||'';load()}
+function setTag(tag){S.f.tag=tag||'';document.getElementById('ti').value=tag||'';load();}
+
+function resetFilters(){
+  S.f={gender:'female',sort:'viewersCount',country:'',tag:'',age:'',body:'',ethnicity:''};
+  document.getElementById('gsel').value='female';
+  document.getElementById('ssel').value='viewersCount';
+  document.getElementById('csel').value='';
+  document.getElementById('asel').value='';
+  document.getElementById('bsel').value='';
+  document.getElementById('esel').value='';
+  document.getElementById('ti').value='';
+  document.querySelectorAll('.cp').forEach(p=>p.classList.toggle('on',p.dataset.tag===''));
+  load();
+}
+
+document.getElementById('es-reset-btn').addEventListener('click',resetFilters);
 
 document.getElementById('gp').addEventListener('click',e=>{
-  const b=e.target.closest('.gp');if(!b)return;
+  const b=e.target.closest('.gp'); if(!b) return;
   const n=parseInt(b.dataset.n);
-  if(!S.paid&&n>V.max_free_grid){showPW('grid');A.track('grid_gate',{n});return}
-  document.querySelectorAll('.gp').forEach(x=>x.classList.remove('on'));b.classList.add('on');
-  S.n=n;load();A.track('grid_n',{n})
+  if(!S.paid&&n>V.max_free_grid){showPW('grid');A.track('grid_gate',{n});return;}
+  document.querySelectorAll('.gp').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  S.n=n; load(); A.track('grid_n',{n});
 });
 
-function bindSel(id,key){document.getElementById(id).addEventListener('change',e=>{S.f[key]=e.target.value;load();A.track('filter',{key,val:e.target.value})})}
-bindSel('gsel','gender');bindSel('ssel','sort');bindSel('csel','country');bindSel('asel','age');bindSel('bsel','body');bindSel('esel','ethnicity');
+function bindSel(id,key){document.getElementById(id).addEventListener('change',e=>{S.f[key]=e.target.value;load();A.track('filter',{key,val:e.target.value});});}
+bindSel('gsel','gender'); bindSel('ssel','sort'); bindSel('csel','country');
+bindSel('asel','age'); bindSel('bsel','body'); bindSel('esel','ethnicity');
 
 document.getElementById('ti').addEventListener('keydown',e=>{
-  if(e.key==='Enter'){const v=e.target.value.trim();S.f.tag=v;document.querySelectorAll('.cp').forEach(p=>p.classList.toggle('on',p.dataset.tag===v));load();A.track('tag_search',{tag:v})}
+  if(e.key==='Enter'){const v=e.target.value.trim();S.f.tag=v;document.querySelectorAll('.cp').forEach(p=>p.classList.toggle('on',p.dataset.tag===v));load();A.track('tag_search',{tag:v});}
 });
 
-document.getElementById('pbtn').addEventListener('click',()=>{S.paused=!S.paused;document.getElementById('pbtn').textContent=S.paused?'▶':'⏸';S.paused?haltAll():resumeAll();A.track(S.paused?'pause':'play')});
-document.getElementById('subbtn').addEventListener('click',()=>{A.track('subscribe',{price:V.price});alert('CCBill integration coming soon.')});
-document.getElementById('disbtn').addEventListener('click',()=>{if(!S.cd)document.getElementById('pwm').classList.remove('show');A.track('dismiss')});
-document.getElementById('pwbg').addEventListener('click',()=>{if(!S.cd)document.getElementById('pwm').classList.remove('show')});
+document.getElementById('pbtn').addEventListener('click',()=>{S.paused=!S.paused;document.getElementById('pbtn').textContent=S.paused?'▶':'⏸';S.paused?haltAll():resumeAll();A.track(S.paused?'pause':'play');});
+document.getElementById('subbtn').addEventListener('click',()=>{A.track('subscribe',{price:V.price});alert('CCBill integration coming soon.');});
+document.getElementById('disbtn').addEventListener('click',()=>{if(!S.cd)document.getElementById('pwm').classList.remove('show');A.track('dismiss');});
+document.getElementById('pwbg').addEventListener('click',()=>{if(!S.cd)document.getElementById('pwm').classList.remove('show');});
 document.getElementById('pvcl').addEventListener('click',()=>document.getElementById('pvm').classList.remove('show'));
 document.getElementById('pvbg').addEventListener('click',()=>document.getElementById('pvm').classList.remove('show'));
 
 document.addEventListener('fullscreenchange',()=>{
-  if(document.fullscreenElement){Object.values(S.hls).forEach(h=>h.stopLoad());if(S.at){const h=S.hls[S.at.dataset.u];if(h){h.config.maxBufferLength=60;h.startLoad()}}}
-  else Object.values(S.hls).forEach(h=>h.startLoad())
+  if(document.fullscreenElement){Object.values(S.hls).forEach(h=>h.stopLoad());if(S.at){const h=S.hls[S.at.dataset.u];if(h){h.config.maxBufferLength=60;h.startLoad();}}}
+  else Object.values(S.hls).forEach(h=>h.startLoad());
 });
 
-function fmt(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n)}
-function fmtT(ms){const h=Math.floor(ms/3600000);if(h>=1)return h+'h';return Math.floor(ms/60000)+'m'}
-function flag(c){if(!c||c.length!==2)return'';return String.fromCodePoint(...c.toUpperCase().split('').map(x=>0x1F1E6+x.charCodeAt(0)-65))}
+// ── HELPERS ────────────────────────────────────────────
+function fmt(n){return n>=1000?(n/1000).toFixed(1)+'k':String(n);}
+function fmtT(ms){const h=Math.floor(ms/3600000);if(h>=1)return h+'h';return Math.floor(ms/60000)+'m';}
+function flag(c){if(!c||c.length!==2)return'';return String.fromCodePoint(...c.toUpperCase().split('').map(x=>0x1F1E6+x.charCodeAt(0)-65));}
 
+// ── INIT ───────────────────────────────────────────────
+checkAgeGate();
 loadSess();
-if(S.cd){tickCD();showPW('resume')}
+if(S.cd){tickCD();showPW('resume');}
 load();
 A.track('start',{variant:V.id,ref:document.referrer});
 window.addEventListener('beforeunload',()=>A.track('end',{dur:Math.floor((Date.now()-S.t0)/1000),w:S.ws}));
