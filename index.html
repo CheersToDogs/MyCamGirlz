@@ -504,6 +504,8 @@ document.getElementById('ag-enter').addEventListener('click', () => {
   localStorage.setItem(AG_KEY, '1');
   document.getElementById('agegate').classList.add('gone');
   A.track('age_gate_accept');
+  // Trigger load if not already running (first visit)
+  if (!S.models.length) load();
 });
 
 // ── VARIANT CONFIG ─────────────────────────────────────
@@ -1106,7 +1108,8 @@ checkAgeGate();
 loadSess();
 initAuth();
 if(S.cd){tickCD();showPW('resume');}
-load();
+// Only auto-load if age gate already passed (returning visitor)
+if(localStorage.getItem(AG_KEY)==='1') load();
 A.track('start',{variant:V.id,ref:document.referrer});
 window.addEventListener('beforeunload',()=>A.track('end',{dur:Math.floor((Date.now()-S.t0)/1000),w:S.ws}));
 </script>
