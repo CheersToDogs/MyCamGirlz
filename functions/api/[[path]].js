@@ -27,7 +27,9 @@ export async function onRequest(context) {
   }
 
   // Build upstream URL — strip /api prefix, keep rest of path + query
-  const upstreamPath = url.pathname.replace(/^\/api/, '') + url.search;
+  // For catch-all [[path]], context.params.path has segments after /api/
+  const pathStr = Array.isArray(context.params.path) ? context.params.path.join('/') : (context.params.path || '');
+  const upstreamPath = '/' + pathStr + url.search;
   const upstreamUrl  = UPSTREAM + upstreamPath;
 
   // Forward request
