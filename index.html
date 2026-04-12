@@ -290,7 +290,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .mgm-fs:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
 .mgm-close{background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;padding:0 2px;transition:color .15s}
 .mgm-close:hover{color:var(--pink)}
-.mgm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:8px;overflow-y:auto;max-height:300px}
+.mgm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:8px;overflow-y:auto;max-height:420px;scrollbar-width:thin;scrollbar-color:var(--surface2) transparent}
 #mgm.fullscreen-mode .mgm-grid{max-height:calc(100vh - 120px)}
 .mg-tile{position:relative;aspect-ratio:16/9;background:var(--bg3);border-radius:6px;overflow:hidden;cursor:pointer;border:1px solid var(--border)}
 .mg-tile:hover{border-color:var(--border-hot)}
@@ -306,12 +306,23 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 
 /* GRID: 2x2 fills viewport */
 @media(min-width:769px){
-  #grid[data-n="2"]{height:calc(100vh - 54px - 40px - 36px - 2px);gap:0}
+  /* 2x2 tiles fill viewport using aspect-ratio trick — scroll still works below */
+  #grid[data-n="2"] .tile{aspect-ratio:unset}
+  #grid[data-n="2"]{
+    grid-template-columns:repeat(2,1fr);
+    grid-template-rows:repeat(2,calc((100vh - 54px - 40px - 36px - 2px) / 2));
+    gap:0;
+  }
   #grid[data-n="2"] .tile{border-radius:0;border:none;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
-  #gw[data-fullgrid="true"]{padding:0;overflow:hidden}
+  #gw[data-fullgrid="true"]{padding:0}
 }
 @media(max-width:768px) and (orientation:landscape){
-  #grid[data-n="2"]{height:calc(100vh - 54px - 36px);gap:0}
+  #grid[data-n="2"] .tile{aspect-ratio:unset}
+  #grid[data-n="2"]{
+    grid-template-columns:repeat(2,1fr);
+    grid-template-rows:repeat(2,calc((100vh - 54px - 36px) / 2));
+    gap:0;
+  }
   #grid[data-n="2"] .tile{border-radius:0}
   #gw[data-fullgrid="true"]{padding:0}
 }
@@ -1382,19 +1393,33 @@ function startMGTimer() {
   }, 1000);
 }
 
-function renderMG() {
+async function renderMG() {
   const grid = document.getElementById('mgm-grid');
-  grid.innerHTML = '';
+  grid.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2);font-size:12px">Loading…</div>';
   Object.values(mgHls).forEach(h => { try { h.destroy(); } catch(e){} });
   mgHls = {};
 
-  // Use all fetched models, not just displayed ones
-  const pool = S.models.length ? S.models : [];
-  const show = pool.slice(0, 9); // 3x3
-  const more = Math.max(0, pool.length - 9);
+  // Fetch 50 models independently of current tier/filter
+  let pool = S.models.length >= 50 ? S.models : [];
+  if (!pool.length) {
+    try {
+      const f = S.f;
+      const p = new URLSearchParams({limit:'200',sortBy:'viewersCount',gender:f.gender});
+      const r = await fetch(`https://go.stripchat.com/api/models?${p}`);
+      const d = await r.json();
+      pool = (d.models||d.data||[]).filter(m=>m.status==='public'&&m.stream&&m.stream.urls);
+    } catch(e) {
+      pool = S.models;
+    }
+  }
+
+  const show = pool.slice(0, 50);
+  const more = Math.max(0, pool.length - show.length);
 
   document.getElementById('mgm-more-txt').textContent =
-    more > 0 ? `+${more} more live right now` : `${pool.length} models live`;
+    more > 0 ? `+${more} more live right now` : `${pool.length} models live now`;
+
+  grid.innerHTML = '';
 
   show.forEach(m => {
     const tile = document.createElement('div');
@@ -1428,9 +1453,9 @@ function renderMG() {
 
     grid.appendChild(tile);
 
-    // HLS for micro tiles
+    // Only load HLS for first 9 (visible) — rest are snapshots to save bandwidth
     const url = getUrl(m);
-    if (url && Hls.isSupported()) {
+    if (url && Hls.isSupported() && show.indexOf(m) < 9) {
       const h = new Hls({ strictManifestParsing: false, maxBufferLength: 5 });
       h.loadSource(url);
       h.attachMedia(vid);
