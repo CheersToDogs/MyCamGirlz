@@ -883,16 +883,18 @@ function renderGrid(ms) {
   g.style.gridTemplateColumns=`repeat(${S.n},1fr)`;
   ms.forEach(m=>g.appendChild(makeTile(m)));
 
-  // NO signup tiles in the grid — they break the 2x2 fill
-  // Email unlock banner appears BELOW the grid instead
+  // Anon: 4 blurred placeholder tiles in grid (look like locked video players)
+  if (!S.user && !S.paid) {
+    for (let i = 0; i < 4; i++) g.appendChild(makeLockedTile(i));
+  } else if (S.user && !S.paid) {
+    // Free: show paid upsell tiles if grid has gaps
+    const needed = (S.n * S.n) - ms.length;
+    for (let i = 0; i < Math.max(0, needed); i++) g.appendChild(makeSignupTile('paid'));
+  }
 
   applyGridLayout();
-  // Show email unlock banner for anonymous after tiles render
-  if (!S.user && !S.paid) {
-    document.getElementById('email-unlock').classList.add('show');
-  } else {
-    document.getElementById('email-unlock').classList.remove('show');
-  }
+  // Hide email banner — it's triggered by clicking a locked tile instead
+  document.getElementById('email-unlock').classList.remove('show');
   // Show micro-grid pill once we have models
   if (S.models.length > 4) {
     document.getElementById('mg-pill').classList.add('show');
@@ -1167,6 +1169,41 @@ function updateFavButtons() {
     btn.classList.toggle('on', on);
     btn.textContent = on ? '♥' : '♡';
   });
+}
+
+
+// ── LOCKED TILE (anonymous upsell in-grid) ────────────────────────────────────
+function makeLockedTile(idx) {
+  const tile = document.createElement('div');
+  tile.className = 'tile locked-tile';
+  tile.style.cursor = 'pointer';
+
+  // Blurred snapshot background from a real model if available
+  const model = S.models[4 + idx] || S.models[idx] || null;
+  if (model) {
+    const su = model.snapshotUrl || model.widgetPreviewUrl || '';
+    if (su) {
+      tile.style.backgroundImage = `url(${su})`;
+      tile.style.backgroundSize = 'cover';
+      tile.style.backgroundPosition = 'center';
+    }
+  }
+
+  tile.innerHTML = `
+    <div style="position:absolute;inset:0;backdrop-filter:blur(14px) brightness(.4);background:rgba(14,9,18,.5);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center">
+      <div style="font-size:28px">🔓</div>
+      <div style="font-family:var(--font-d);font-size:13px;font-weight:800;color:#fff">Unlock ${idx === 0 ? '4 more free streams' : 'this stream free'}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6)">Enter your email — instant access</div>
+      <button style="background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:12px;font-weight:800;padding:7px 18px;border:none;border-radius:var(--rp);cursor:pointer;box-shadow:0 2px 12px rgba(255,62,138,.4)">Sign Up Free →</button>
+    </div>
+  `;
+
+  tile.addEventListener('click', () => {
+    showEmailUnlock();
+    A.track('locked_tile_click', { idx });
+  });
+
+  return tile;
 }
 
 // ══════════════════════════════════════
