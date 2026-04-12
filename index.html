@@ -251,6 +251,69 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 /* DEBUG RESET PILL */
 #debug-pill{position:fixed;bottom:50px;right:16px;z-index:9998;background:#1a1a2e;border:1px solid #ff3e8a;border-radius:var(--rp);padding:6px 14px;font-family:var(--font);font-size:11px;font-weight:700;color:#ff3e8a;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 12px rgba(255,62,138,.3);transition:all .15s}
 #debug-pill:hover{background:rgba(255,62,138,.15);box-shadow:0 4px 18px rgba(255,62,138,.5)}
+
+/* EMAIL UNLOCK BANNER */
+#email-unlock{display:none;background:linear-gradient(135deg,rgba(255,62,138,.12),rgba(123,47,255,.12));border:1px solid rgba(255,62,138,.3);border-radius:var(--r);padding:18px 20px;margin:10px 14px 0;text-align:center}
+#email-unlock.show{display:block}
+.eu-title{font-family:var(--font-d);font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px}
+.eu-sub{font-size:12px;color:var(--text2);margin-bottom:14px}
+.eu-row{display:flex;gap:8px;max-width:420px;margin:0 auto 10px}
+.eu-input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:13px;padding:10px 14px;border-radius:var(--rsm);outline:none}
+.eu-input:focus{border-color:var(--pink)}
+.eu-input::placeholder{color:var(--text3)}
+.eu-btn{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:13px;font-weight:800;padding:10px 18px;border:none;border-radius:var(--rsm);cursor:pointer;white-space:nowrap;box-shadow:0 2px 12px rgba(255,62,138,.4);transition:all .15s}
+.eu-btn:hover{filter:brightness(1.1)}
+.eu-or{font-size:11px;color:var(--text3);margin-bottom:10px}
+.eu-premium{background:transparent;border:1px solid rgba(255,62,138,.4);color:var(--pink-soft);font-family:var(--font-d);font-size:12px;font-weight:700;padding:8px 20px;border-radius:var(--rp);cursor:pointer;transition:all .15s}
+.eu-premium:hover{background:rgba(255,62,138,.1)}
+.eu-msg{font-size:12px;margin-top:6px;min-height:16px}
+.eu-msg.ok{color:#6fe87a}
+.eu-msg.err{color:var(--pink)}
+
+/* MICRO-GRID TRIGGER PILL */
+#mg-pill{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);z-index:400;background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:12px;font-weight:800;padding:8px 20px;border-radius:var(--rp);cursor:pointer;box-shadow:0 4px 20px rgba(255,62,138,.5);transition:all .2s;border:none;white-space:nowrap;display:none}
+#mg-pill.show{display:block}
+#mg-pill:hover{box-shadow:0 6px 28px rgba(255,62,138,.7);transform:translateX(-50%) translateY(-2px)}
+
+/* MICRO-GRID MODAL */
+#mgm{display:none;position:fixed;bottom:80px;right:20px;z-index:500;background:var(--bg2);border:1px solid rgba(255,62,138,.3);border-radius:16px;overflow:hidden;width:min(480px,90vw);box-shadow:0 8px 40px rgba(0,0,0,.6),0 0 40px rgba(255,62,138,.1);animation:slideUp .25s cubic-bezier(.34,1.56,.64,1)}
+#mgm.show{display:block}
+#mgm.fullscreen-mode{position:fixed;inset:0;width:100%;bottom:0;right:0;border-radius:0;z-index:600}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.mgm-hdr{background:rgba(14,9,18,.9);padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.mgm-title{font-family:var(--font-d);font-size:13px;font-weight:800;flex:1}
+.mgm-cd{font-family:'Outfit',monospace;font-size:12px;font-weight:700;color:var(--pink);background:rgba(255,62,138,.15);padding:3px 9px;border-radius:var(--rp);min-width:36px;text-align:center}
+.mgm-cd.low{animation:tp 1s infinite}
+.mgm-fs{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-size:11px;padding:4px 8px;border-radius:var(--rsm);cursor:pointer;transition:all .15s}
+.mgm-fs:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
+.mgm-close{background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;padding:0 2px;transition:color .15s}
+.mgm-close:hover{color:var(--pink)}
+.mgm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:8px;overflow-y:auto;max-height:300px}
+#mgm.fullscreen-mode .mgm-grid{max-height:calc(100vh - 120px)}
+.mg-tile{position:relative;aspect-ratio:16/9;background:var(--bg3);border-radius:6px;overflow:hidden;cursor:pointer;border:1px solid var(--border)}
+.mg-tile:hover{border-color:var(--border-hot)}
+.mg-tile .snap{position:absolute;inset:0;background-size:cover;background-position:center}
+.mg-tile video{width:100%;height:100%;object-fit:cover}
+.mg-tile .mg-name{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.8),transparent);padding:6px 6px 4px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mg-tile .mg-vc{position:absolute;top:4px;right:4px;background:rgba(255,62,138,.7);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px}
+.mgm-more{background:linear-gradient(135deg,rgba(255,62,138,.15),rgba(123,47,255,.15));border-top:1px solid rgba(255,62,138,.2);padding:12px;text-align:center}
+.mgm-more-txt{font-family:var(--font-d);font-size:13px;font-weight:900;color:var(--pink);margin-bottom:6px}
+.mgm-more-sub{font-size:11px;color:var(--text2);margin-bottom:10px}
+.mgm-signup{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:12px;font-weight:800;padding:8px 20px;border:none;border-radius:var(--rp);cursor:pointer;box-shadow:0 2px 12px rgba(255,62,138,.4);transition:all .15s}
+.mgm-signup:hover{filter:brightness(1.1)}
+
+/* GRID: 2x2 fills viewport */
+@media(min-width:769px){
+  #grid[data-n="2"]{height:calc(100vh - 54px - 40px - 36px - 2px);gap:0}
+  #grid[data-n="2"] .tile{border-radius:0;border:none;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+  #gw[data-fullgrid="true"]{padding:0;overflow:hidden}
+}
+@media(max-width:768px) and (orientation:landscape){
+  #grid[data-n="2"]{height:calc(100vh - 54px - 36px);gap:0}
+  #grid[data-n="2"] .tile{border-radius:0}
+  #gw[data-fullgrid="true"]{padding:0}
+}
+
 </style>
 </head>
 <body>
@@ -325,6 +388,19 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     <div id="loading-state"><div class="ls-spinner"></div><div class="ls-text">Loading live cams…</div></div>
     <div id="empty-state"><div class="es-icon">📭</div><div class="es-title">No cams found</div><div class="es-sub">No live models match your current filters. Try a different category or clear your filters.</div><button class="es-reset" id="es-reset-btn">Clear Filters</button></div>
     <div id="grid"></div>
+
+    <!-- EMAIL UNLOCK BANNER -->
+    <div id="email-unlock">
+      <div class="eu-title">🎁 Unlock 4 more free streams</div>
+      <div class="eu-sub">Enter your email — instant access. No verification, no password.</div>
+      <div class="eu-row">
+        <input class="eu-input" id="eu-email" type="email" placeholder="your@email.com" autocomplete="email">
+        <button class="eu-btn" id="eu-btn">Unlock Free →</button>
+      </div>
+      <div class="eu-or">— or —</div>
+      <button class="eu-premium" onclick="showPW('email_banner')">Go Unlimited $9.99/mo — All 36 streams</button>
+      <div class="eu-msg" id="eu-msg"></div>
+    </div>
   </div>
 </div>
 
@@ -416,6 +492,25 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   </div>
 </div>
 
+
+<!-- SEE WHAT YOU'RE MISSING PILL -->
+<button id="mg-pill" onclick="openMG()">👀 See What You're Missing</button>
+
+<!-- MICRO-GRID MODAL -->
+<div id="mgm">
+  <div class="mgm-hdr">
+    <div class="mgm-title">👀 Live Right Now</div>
+    <div class="mgm-cd" id="mgm-cd">30</div>
+    <button class="mgm-fs" id="mgm-fs-btn" onclick="toggleMGFS()">⛶ Full</button>
+    <button class="mgm-close" onclick="closeMG()">✕</button>
+  </div>
+  <div class="mgm-grid" id="mgm-grid"></div>
+  <div class="mgm-more">
+    <div class="mgm-more-txt" id="mgm-more-txt">+0 more live now</div>
+    <div class="mgm-more-sub">Sign up free to watch 8 streams. Go premium for all 36.</div>
+    <button class="mgm-signup" onclick="closeMG();showEmailUnlock()">Unlock More →</button>
+  </div>
+</div>
 
 <!-- DEBUG RESET PILL — remove before launch -->
 <div id="debug-pill" onclick="debugReset()" title="Reset timer + session for debugging">🔄 Reset Timer</div>
@@ -605,14 +700,16 @@ function renderT() {
 }
 
 function expireT() {
-  const cu = Date.now()+V.reset_hours*3600000;
-  S.cd=true; S.cds=V.reset_hours*3600;
-  saveSess({cu});
+  // Hold blurred state — do NOT auto-start cooldown
+  // User must manually reset via debug pill (or we handle later)
   document.querySelectorAll('.tile').forEach(t=>t.classList.add('bl'));
   haltAll();
   A.track('expired',{w:S.ws});
   showPW('expired');
-  tickCD();
+  // Show email unlock banner too
+  document.getElementById('email-unlock').classList.add('show');
+  // Show micro-grid pill as escape valve
+  document.getElementById('mg-pill').classList.add('show');
 }
 
 function tickCD() {
@@ -727,7 +824,7 @@ function showEmpty(v)   { document.getElementById('empty-state').classList.toggl
 async function fetchModels() {
   const f=S.f;
   const realLimit = gridLimit();
-  const p=new URLSearchParams({limit:String(Math.max(realLimit*3,48)),sortBy:f.sort,gender:f.gender});
+  const p=new URLSearchParams({limit:'200',sortBy:f.sort,gender:f.gender});
   if(f.tag) p.set('tag',f.tag);
   if(f.country) p.set('country',f.country);
   const r=await fetch(`https://go.stripchat.com/api/models?${p}`);
@@ -755,6 +852,7 @@ async function load() {
     renderGrid(ms.slice(0,gridLimit()));
     document.getElementById('lcnt').textContent=`${ms.length} live`;
     A.track('loaded',{count:ms.length,n:S.n});
+    updatePillCounts(ms);
   } catch(e) {
     showLoading(false);
     showEmpty(true);
@@ -780,6 +878,17 @@ function renderGrid(ms) {
     for (let i = 0; i < Math.max(0, needed); i++) g.appendChild(makeSignupTile('paid'));
   }
 
+  applyGridLayout();
+  // Show email unlock banner for anonymous after tiles render
+  if (!S.user && !S.paid) {
+    document.getElementById('email-unlock').classList.add('show');
+  } else {
+    document.getElementById('email-unlock').classList.remove('show');
+  }
+  // Show micro-grid pill once we have models
+  if (S.models.length > 4) {
+    document.getElementById('mg-pill').classList.add('show');
+  }
   if(!S.paid&&!S.cd&&!S.ta) startTimer();
 }
 
@@ -842,6 +951,8 @@ document.addEventListener('keydown',e=>{
     hideLegal();
     document.getElementById('pvm').classList.remove('show');
     if(!S.cd) document.getElementById('pwm').classList.remove('show');
+    document.getElementById('auth-modal').classList.remove('show');
+    closeMG();
   }
 });
 
@@ -1134,6 +1245,214 @@ function debugReset() {
   // Reload fresh
   location.reload();
 }
+
+// ══════════════════════════════════════
+// CATEGORY PILL COUNTS
+// ══════════════════════════════════════
+function updatePillCounts(models) {
+  // Build tag frequency map from all fetched models
+  const counts = {};
+  models.forEach(m => {
+    (m.tags || m.categories || []).forEach(t => {
+      counts[t] = (counts[t] || 0) + 1;
+    });
+  });
+  document.querySelectorAll('.cp[data-tag]').forEach(pill => {
+    const tag = pill.dataset.tag;
+    if (!tag) {
+      pill.textContent = `All ${models.length}`;
+      return;
+    }
+    const n = counts[tag];
+    // Get base label (strip old count)
+    const base = pill.textContent.replace(/\s*\d+$/, '').trim();
+    pill.textContent = n ? `${base} ${n}` : base;
+  });
+}
+
+// ══════════════════════════════════════
+// EMAIL UNLOCK (instant, no verification)
+// ══════════════════════════════════════
+function showEmailUnlock() {
+  const el = document.getElementById('email-unlock');
+  el.classList.add('show');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  document.getElementById('eu-email').focus();
+}
+
+async function doEmailUnlock() {
+  const email = document.getElementById('eu-email').value.trim();
+  const msg = document.getElementById('eu-msg');
+  const btn = document.getElementById('eu-btn');
+  if (!email || !email.includes('@')) {
+    msg.textContent = 'Please enter a valid email.';
+    msg.className = 'eu-msg err';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Unlocking…';
+  try {
+    // Create unverified free account — instant unlock, no email sent
+    await apiPost('/auth/magic', { email });
+    // Optimistically unlock — treat as free user immediately
+    S.user = { id: 0, email, tier: 'free', verified: false };
+    document.getElementById('email-unlock').classList.remove('show');
+    document.getElementById('mg-pill').classList.add('show');
+    // Re-render with 8 streams
+    if (S.models.length) renderGrid(S.models.slice(0, gridLimit()));
+    msg.textContent = '✓ Unlocked! Check email for a sign-in link.';
+    msg.className = 'eu-msg ok';
+    A.track('email_unlock', { email_domain: email.split('@')[1] });
+  } catch(e) {
+    // Even on API error, unlock locally (optimistic)
+    S.user = { id: 0, email, tier: 'free', verified: false };
+    document.getElementById('email-unlock').classList.remove('show');
+    if (S.models.length) renderGrid(S.models.slice(0, gridLimit()));
+    A.track('email_unlock_offline', {});
+  }
+  btn.disabled = false;
+  btn.textContent = 'Unlock Free →';
+}
+
+document.getElementById('eu-btn').addEventListener('click', doEmailUnlock);
+document.getElementById('eu-email').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doEmailUnlock();
+});
+
+// ══════════════════════════════════════
+// MICRO-GRID MODAL
+// ══════════════════════════════════════
+let mgTimer = null;
+let mgSecs = 30;
+let mgHls = {};
+let mgOpen = false;
+
+function openMG() {
+  if (mgOpen) { closeMG(); return; }
+  mgOpen = true;
+  document.getElementById('mgm').classList.add('show');
+  document.getElementById('mg-pill').textContent = '✕ Close Preview';
+  renderMG();
+  startMGTimer();
+  A.track('microgrid_open');
+}
+
+function closeMG() {
+  mgOpen = false;
+  document.getElementById('mgm').classList.remove('show','fullscreen-mode');
+  document.getElementById('mg-pill').textContent = "👀 See What You're Missing";
+  clearInterval(mgTimer);
+  // Destroy micro-grid HLS
+  Object.values(mgHls).forEach(h => { try { h.destroy(); } catch(e){} });
+  mgHls = {};
+}
+
+function toggleMGFS() {
+  const el = document.getElementById('mgm');
+  const btn = document.getElementById('mgm-fs-btn');
+  const fs = el.classList.toggle('fullscreen-mode');
+  btn.textContent = fs ? '⛶ Exit' : '⛶ Full';
+}
+
+function startMGTimer() {
+  mgSecs = 30;
+  const cd = document.getElementById('mgm-cd');
+  clearInterval(mgTimer);
+  mgTimer = setInterval(() => {
+    mgSecs--;
+    cd.textContent = mgSecs;
+    if (mgSecs <= 10) cd.classList.add('low');
+    if (mgSecs <= 0) {
+      clearInterval(mgTimer);
+      closeMG();
+      // Show upsell
+      if (!S.user) showEmailUnlock();
+      else if (!S.paid) showPW('microgrid_timeout');
+      A.track('microgrid_timeout');
+    }
+  }, 1000);
+}
+
+function renderMG() {
+  const grid = document.getElementById('mgm-grid');
+  grid.innerHTML = '';
+  Object.values(mgHls).forEach(h => { try { h.destroy(); } catch(e){} });
+  mgHls = {};
+
+  // Use all fetched models, not just displayed ones
+  const pool = S.models.length ? S.models : [];
+  const show = pool.slice(0, 9); // 3x3
+  const more = Math.max(0, pool.length - 9);
+
+  document.getElementById('mgm-more-txt').textContent =
+    more > 0 ? `+${more} more live right now` : `${pool.length} models live`;
+
+  show.forEach(m => {
+    const tile = document.createElement('div');
+    tile.className = 'mg-tile';
+    const snap = document.createElement('div');
+    snap.className = 'snap';
+    const su = m.snapshotUrl || m.widgetPreviewUrl || '';
+    if (su) snap.style.backgroundImage = `url(${su})`;
+    tile.appendChild(snap);
+
+    const vid = document.createElement('video');
+    vid.muted = true; vid.playsInline = true; vid.autoplay = true;
+    tile.appendChild(vid);
+
+    const name = document.createElement('div');
+    name.className = 'mg-name';
+    name.textContent = m.username;
+    tile.appendChild(name);
+
+    if (m.viewersCount) {
+      const vc = document.createElement('div');
+      vc.className = 'mg-vc';
+      vc.textContent = fmt(m.viewersCount);
+      tile.appendChild(vc);
+    }
+
+    tile.addEventListener('click', () => {
+      closeMG();
+      openPV(m);
+    });
+
+    grid.appendChild(tile);
+
+    // HLS for micro tiles
+    const url = getUrl(m);
+    if (url && Hls.isSupported()) {
+      const h = new Hls({ strictManifestParsing: false, maxBufferLength: 5 });
+      h.loadSource(url);
+      h.attachMedia(vid);
+      h.on(Hls.Events.MANIFEST_PARSED, () => {
+        vid.play().catch(() => {});
+        snap.style.opacity = '0';
+      });
+      mgHls[m.username] = h;
+    }
+  });
+}
+
+// ══════════════════════════════════════
+// TIMER: hold expired state until manual reset
+// ══════════════════════════════════════
+// (expireT now just blurs and shows paywall — no auto cooldown tick)
+
+// ══════════════════════════════════════
+// 2x2 VIEWPORT FILL
+// ══════════════════════════════════════
+function applyGridLayout() {
+  const gw = document.getElementById('gw');
+  const grid = document.getElementById('grid');
+  grid.dataset.n = S.n;
+  if (S.n === 2) {
+    gw.dataset.fullgrid = 'true';
+  } else {
+    gw.dataset.fullgrid = 'false';
+  }
+}
+
 // ── INIT ───────────────────────────────────────────────
 checkAgeGate();
 loadSess();
