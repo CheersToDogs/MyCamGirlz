@@ -128,7 +128,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .ttag:hover{background:var(--purple)}
 .lbdg{position:absolute;top:8px;left:8px;background:var(--pink);color:#fff;font-family:var(--font-d);font-size:9px;font-weight:900;padding:2px 7px;border-radius:var(--rp);letter-spacing:.8px;text-transform:uppercase;box-shadow:0 0 8px var(--pink-glow)}
 .hdbdg{position:absolute;top:8px;right:36px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px}
-.abtn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);width:27px;height:27px;border-radius:var(--rsm);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .15s}
+.abtn{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);width:27px;height:27px;border-radius:var(--rsm);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .15s;z-index:10}
 .tile:hover .abtn,.tile.aa .abtn{opacity:1}
 .abtn:hover,.abtn.on{background:var(--pink);border-color:var(--pink);color:#fff}
 .tcta{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;pointer-events:none}
@@ -243,7 +243,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 #login-btn:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
 
 /* FAVORITE BUTTON on tile */
-.fav-btn{position:absolute;bottom:8px;right:38px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);width:27px;height:27px;border-radius:var(--rsm);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .15s}
+.fav-btn{position:absolute;bottom:8px;right:38px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);width:27px;height:27px;border-radius:var(--rsm);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;opacity:0;transition:all .15s;z-index:10}
 .tile:hover .fav-btn,.fav-btn.on{opacity:1}
 .fav-btn.on{background:rgba(255,62,138,.3);border-color:var(--pink);color:var(--pink)}
 
@@ -705,7 +705,7 @@ function toggleAudio(tile,vid) {
   const was=S.at===tile;
   document.querySelectorAll('.tile').forEach(t=>{t.classList.remove('aa');const b=t.querySelector('.abtn');if(b){b.textContent='🔇';b.classList.remove('on');}});
   document.querySelectorAll('#grid video').forEach(v=>{v.muted=true;}); S.at=null;
-  if(!was){vid.muted=false;tile.classList.add('aa');const b=tile.querySelector('.abtn');if(b){b.textContent='🔊';b.classList.add('on');}S.at=tile;tile.parentElement.prepend(tile);A.track('audio',{u:tile.dataset.u});}
+  if(!was){vid.muted=false;tile.classList.add('aa');const b=tile.querySelector('.abtn');if(b){b.textContent='🔊';b.classList.add('on');}S.at=tile;A.track('audio',{u:tile.dataset.u});}
 }
 
 // ── PRIVATE MODAL ──────────────────────────────────────
