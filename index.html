@@ -101,8 +101,10 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* EMPTY STATE */
-#empty-state{display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:5;text-align:center;padding:20px}
+#empty-state{display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:5;text-align:center;padding:20px;background:var(--bg)}
 #empty-state.show{display:flex}
+.es-x{position:absolute;top:16px;right:16px;background:var(--surface);border:1px solid var(--border);color:var(--text2);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.es-x:hover{background:var(--pink);border-color:var(--pink);color:#fff}
 .es-icon{font-size:48px;opacity:.4}
 .es-title{font-family:var(--font-d);font-size:18px;font-weight:800;color:var(--text2)}
 .es-sub{font-size:13px;color:var(--text3);max-width:300px;line-height:1.6}
@@ -336,10 +338,10 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <a id="logo" href="/">MyCamGirlz</a>
   <div class="hdiv"></div>
   <div id="gp">
-    <button class="gp" data-n="1">1×1</button>
+    <button class="gp" data-n="1">1×1 ⭐</button>
     <button class="gp on" data-n="2">2×2</button>
-    <button class="gp" data-n="3">3×3</button>
-    <button class="gp" data-n="4">4×4</button>
+    <button class="gp" data-n="3">3×3 ✨</button>
+    <button class="gp" data-n="4">4×4 ✨</button>
     <button class="gp" data-n="6">6×6 ✨</button>
   </div>
   <div class="hdiv"></div>
@@ -386,7 +388,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <div id="rbar"><div id="rprog"></div></div>
   <div id="gw" style="position:relative">
     <div id="loading-state"><div class="ls-spinner"></div><div class="ls-text">Loading live cams…</div></div>
-    <div id="empty-state"><div class="es-icon">📭</div><div class="es-title">No cams found</div><div class="es-sub">No live models match your current filters. Try a different category or clear your filters.</div><button class="es-reset" id="es-reset-btn">Clear Filters</button></div>
+    <div id="empty-state"><button class="es-x" id="es-close-btn" onclick="showEmpty(false)">✕</button><div class="es-icon">📭</div><div class="es-title">No cams found</div><div class="es-sub">No live models match your current filters. Try a different category or clear your filters.</div><button class="es-reset" id="es-reset-btn">Clear Filters</button></div>
     <div id="grid"></div>
 
     <!-- EMAIL UNLOCK BANNER -->
@@ -843,8 +845,10 @@ async function load() {
   try {
     const ms=await fetchModels(); S.models=ms;
     const cs=document.getElementById('csel');
-    if(cs.options.length===1&&ms.length){
+    if(ms.length){
       const countries=[...new Set(ms.map(m=>m.country).filter(Boolean))].sort();
+      // Rebuild country list fresh each load
+      while(cs.options.length>1) cs.remove(1);
       countries.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=flag(c)+' '+c;cs.appendChild(o);});
     }
     showLoading(false);
@@ -868,15 +872,8 @@ function renderGrid(ms) {
   g.style.gridTemplateColumns=`repeat(${S.n},1fr)`;
   ms.forEach(m=>g.appendChild(makeTile(m)));
 
-  // Append upsell tiles based on tier
-  if (!S.user) {
-    // Anonymous: show 4 signup tiles after 4 real tiles
-    for (let i = 0; i < 4; i++) g.appendChild(makeSignupTile('free'));
-  } else if (!S.paid) {
-    // Free account: show paid upsell tiles after 8 real tiles
-    const needed = S.n * S.n - ms.length;
-    for (let i = 0; i < Math.max(0, needed); i++) g.appendChild(makeSignupTile('paid'));
-  }
+  // NO signup tiles in the grid — they break the 2x2 fill
+  // Email unlock banner appears BELOW the grid instead
 
   applyGridLayout();
   // Show email unlock banner for anonymous after tiles render
@@ -923,6 +920,8 @@ document.getElementById('es-reset-btn').addEventListener('click',resetFilters);
 document.getElementById('gp').addEventListener('click',e=>{
   const b=e.target.closest('.gp'); if(!b) return;
   const n=parseInt(b.dataset.n);
+  // 1x1 is premium fullscreen — paid only
+  if (n === 1 && !S.paid) { showPW('grid_1x1'); A.track('grid_gate',{n,tier:S.user?'free':'anon'}); return; }
   if(n > maxGridN()) {
     if (!S.user) { showAuthModal('Unlock bigger grids','Sign up free for up to 3×3. Go premium for up to 6×6.'); A.track('grid_gate',{n,tier:'anon'}); return; }
     if (!S.paid) { showPW('grid'); A.track('grid_gate',{n,tier:'free'}); return; }
@@ -953,6 +952,7 @@ document.addEventListener('keydown',e=>{
     if(!S.cd) document.getElementById('pwm').classList.remove('show');
     document.getElementById('auth-modal').classList.remove('show');
     closeMG();
+    showEmpty(false);
   }
 });
 
@@ -1249,8 +1249,16 @@ function debugReset() {
 // ══════════════════════════════════════
 // CATEGORY PILL COUNTS
 // ══════════════════════════════════════
+// Store base pill labels once on init
+const PILL_LABELS = {};
+function initPillLabels() {
+  document.querySelectorAll('.cp[data-tag]').forEach(pill => {
+    PILL_LABELS[pill.dataset.tag] = pill.textContent.trim();
+  });
+}
+
 function updatePillCounts(models) {
-  // Build tag frequency map from all fetched models
+  if (!Object.keys(PILL_LABELS).length) initPillLabels();
   const counts = {};
   models.forEach(m => {
     (m.tags || m.categories || []).forEach(t => {
@@ -1259,14 +1267,15 @@ function updatePillCounts(models) {
   });
   document.querySelectorAll('.cp[data-tag]').forEach(pill => {
     const tag = pill.dataset.tag;
+    const base = PILL_LABELS[tag] || pill.dataset.tag;
     if (!tag) {
-      pill.textContent = `All ${models.length}`;
+      pill.innerHTML = `All <span style="opacity:.7;font-size:10px">${models.length}</span>`;
       return;
     }
-    const n = counts[tag];
-    // Get base label (strip old count)
-    const base = pill.textContent.replace(/\s*\d+$/, '').trim();
-    pill.textContent = n ? `${base} ${n}` : base;
+    const n = counts[tag] || 0;
+    pill.innerHTML = n
+      ? `${base} <span style="opacity:.7;font-size:10px">${n}</span>`
+      : base;
   });
 }
 
@@ -1458,6 +1467,8 @@ checkAgeGate();
 loadSess();
 initAuth();
 if(S.cd){tickCD();showPW('resume');}
+initPillLabels();
+applyGridLayout();
 // Always load — age gate is a visual overlay only, doesn't block JS
 load();
 A.track('start',{variant:V.id,ref:document.referrer});
