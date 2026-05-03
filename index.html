@@ -63,6 +63,19 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 #tpill.crit #tdot{background:var(--pink)}
 #pbtn{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:11px;font-weight:500;padding:5px 10px;border-radius:var(--rsm);cursor:pointer;transition:all .15s;flex-shrink:0;white-space:nowrap}
 #pbtn:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
+/* SOURCES pill + dropdown */
+#src-pill{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:11px;font-weight:500;padding:5px 10px;border-radius:var(--rsm);cursor:pointer;transition:all .15s;flex-shrink:0;white-space:nowrap;user-select:none}
+#src-pill:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
+#src-pill .src-cnt{color:var(--pink-soft);font-weight:700}
+#src-pill .src-car{font-size:9px;opacity:.7}
+#src-menu{display:none;position:fixed;top:54px;z-index:100;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#src-menu.show{display:block}
+#src-menu .src-hd{padding:4px 8px 8px;font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);margin-bottom:6px}
+#src-menu .src-row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--rsm);cursor:pointer;transition:background .15s}
+#src-menu .src-row:hover{background:var(--surface)}
+#src-menu .src-row input{accent-color:var(--pink);cursor:pointer;width:14px;height:14px;flex-shrink:0}
+#src-menu .src-row .src-lbl{font-size:12px;color:var(--text);font-weight:600}
+#src-menu .src-foot{padding:8px 8px 4px;font-size:10px;color:var(--text2);border-top:1px solid var(--border);margin-top:6px;line-height:1.4}
 #lcnt{font-size:11px;color:var(--text2);white-space:nowrap;flex-shrink:0}
 
 /* mobile: hide some filters */
@@ -365,6 +378,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <select id="esel" class="hsel"><option value="">Ethnicity</option><option value="white">White</option><option value="latina">Latina</option><option value="asian">Asian</option><option value="black">Black</option><option value="middle-eastern">Middle Eastern</option><option value="indian">Indian</option></select>
   <div id="twrap"><span id="tico">🔍</span><input id="ti" type="text" placeholder="Tag… (Enter)"></div>
   <button id="pbtn">⏸</button>
+  <div id="src-pill" title="Toggle which cam networks to load"><span>📡</span><span class="src-cnt" id="src-cnt">2</span><span>Sources</span><span class="src-car">▾</span></div>
   <button id="login-btn">Sign In</button>
   <div id="user-pill"><span id="user-email-short"></span><span style="font-size:9px;margin-left:2px">▾</span></div>
   <span id="lcnt"></span>
@@ -455,6 +469,14 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
     <button onclick="doLogout()" style="width:100%;background:transparent;border:none;color:var(--text2);font-size:12px;padding:6px 12px;text-align:left;cursor:pointer;border-radius:var(--rsm);transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='transparent'">Sign Out</button>
   </div>
+</div>
+
+<!-- SOURCES MENU -->
+<div id="src-menu">
+  <div class="src-hd">Cam Networks</div>
+  <label class="src-row"><input type="checkbox" data-src-toggle="stripchat"><span class="src-lbl">Stripchat</span></label>
+  <label class="src-row"><input type="checkbox" data-src-toggle="xhamsterlive"><span class="src-lbl">xHamsterLive</span></label>
+  <div class="src-foot">Both networks share the same models. Toggling adjusts which brand opens on click-out.</div>
 </div>
 
 <!-- PAYWALL -->
@@ -629,9 +651,38 @@ const V = {id:'v1',free_minutes:2,reset_hours:3,price:9.99,modal_copy:'A',
   max_paid_grid:6,    // paid: 6x6=36
 };
 const AFF = {id:'',campaign:'mycamgirlz'};
-const aurl = u => AFF.id
-  ? `https://go.stripchat.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
-  : `https://stripchat.com/${u}`;
+// ── SOURCES — toggleable cam networks. Stripchat + xHamsterLive share backend (xHL is a Stripchat whitelabel).
+//    Enable/disable independently. When both on, results are merged + deduped by username.
+//    aurl() respects each model's source-of-record so click-outs preserve brand continuity.
+//    User toggle persists to localStorage key 'mcg_sources'. At least one source must remain enabled.
+const SOURCES = {
+  stripchat:    { api:'https://go.stripchat.com',    site:'https://stripchat.com',    label:'Stripchat',    enabled:true },
+  xhamsterlive: { api:'https://go.xhamsterlive.com', site:'https://xhamsterlive.com', label:'xHamsterLive', enabled:true },
+};
+// Restore user toggle state from localStorage (silently ignore parse errors / unknown keys)
+try {
+  const saved=JSON.parse(localStorage.getItem('mcg_sources')||'{}');
+  for(const k of Object.keys(SOURCES)) if(typeof saved[k]==='boolean') SOURCES[k].enabled=saved[k];
+} catch(e) {}
+const enabledSources = () => Object.entries(SOURCES).filter(([,s])=>s.enabled);
+// Guarded setter: rejects all-off, persists, returns true on success
+function setSourceEnabled(key, on) {
+  if(!SOURCES[key]) return false;
+  if(!on && enabledSources().filter(([k])=>k!==key).length===0) return false;  // all-off guard
+  SOURCES[key].enabled=!!on;
+  try {
+    const cur=JSON.parse(localStorage.getItem('mcg_sources')||'{}');
+    cur[key]=!!on;
+    localStorage.setItem('mcg_sources',JSON.stringify(cur));
+  } catch(e) {}
+  return true;
+}
+const aurl = (u, srcKey) => {
+  const s = SOURCES[srcKey] || SOURCES.stripchat;
+  return AFF.id
+    ? `${s.api}/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
+    : `${s.site}/${u}`;
+};
 
 // ── ANALYTICS ──────────────────────────────────────────
 const A = {
@@ -782,8 +833,8 @@ function makeTile(m) {
   info.querySelectorAll('.ttag').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();setTag(el.dataset.tag);A.track('tag',{tag:el.dataset.tag});}));
   const ctaw=document.createElement('div'); ctaw.className='tcta';
   const ctaa=document.createElement('a'); ctaa.className='ctab'; ctaa.textContent='🔒 Go Private';
-  ctaa.href=aurl(m.username); ctaa.target='_blank'; ctaa.rel='noopener';
-  ctaa.addEventListener('click',e=>{e.stopPropagation();A.track('cta',{u:m.username});});
+  ctaa.href=aurl(m.username,m._src); ctaa.target='_blank'; ctaa.rel='noopener';
+  ctaa.addEventListener('click',e=>{e.stopPropagation();A.track('cta',{u:m.username,src:m._src});});
   ctaw.appendChild(ctaa); tile.appendChild(ctaw);
   tile.appendChild(Object.assign(document.createElement('div'),{className:'bcover'}));
   // Favorite button
@@ -825,8 +876,8 @@ function openPV(m) {
   document.getElementById('pvsnap').style.backgroundImage=su?`url(${su})`:'';
   document.getElementById('pvname').textContent=m.username;
   document.getElementById('pvmeta').textContent=[m.age?m.age+'yo':null,m.country,m.viewersCount?fmt(m.viewersCount)+' watching':null,m.ethnicity].filter(Boolean).join(' · ');
-  const u=aurl(m.username);
-  ['pvpriv','pvspy','pvtip','pvpro'].forEach(id=>{document.getElementById(id).href=u;document.getElementById(id).onclick=()=>A.track('pm_click',{u:m.username,id});});
+  const u=aurl(m.username,m._src);
+  ['pvpriv','pvspy','pvtip','pvpro'].forEach(id=>{document.getElementById(id).href=u;document.getElementById(id).onclick=()=>A.track('pm_click',{u:m.username,id,src:m._src});});
   document.getElementById('pvm').classList.add('show');
   A.track('pm_open',{u:m.username});
 }
@@ -837,14 +888,29 @@ function showEmpty(v)   { document.getElementById('empty-state').classList.toggl
 
 async function fetchModels() {
   const f=S.f;
-  const realLimit = gridLimit();
   const p=new URLSearchParams({limit:'200',sortBy:f.sort,gender:f.gender});
   if(f.tag) p.set('tag',f.tag);
   if(f.country) p.set('country',f.country);
-  const r=await fetch(`https://go.stripchat.com/api/models?${p}`);
-  if(!r.ok) throw new Error(r.status);
-  const d=await r.json();
-  let ms=d.models||d.data||[];
+  const srcs=enabledSources();
+  if(!srcs.length) throw new Error('no_sources');
+  // Fan out across enabled sources in parallel; tolerate per-source failure
+  const settled=await Promise.allSettled(srcs.map(([key,s])=>
+    fetch(`${s.api}/api/models?${p}`).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>({key,d}))
+  ));
+  // Dedupe by lowercased username — first-source-wins (Stripchat first by SOURCES iteration order)
+  const seen=new Map();
+  for(const r of settled){
+    if(r.status!=='fulfilled') continue;
+    const {key,d}=r.value;
+    const arr=d.models||d.data||[];
+    for(const m of arr){
+      const u=(m.username||'').toLowerCase();
+      if(!u||seen.has(u)) continue;
+      m._src=key;            // stamp source-of-record for later aurl() routing
+      seen.set(u,m);
+    }
+  }
+  let ms=Array.from(seen.values());
   ms=ms.filter(m=>m.status==='public'&&m.gender===f.gender&&m.stream&&m.stream.urls);
   if(f.body) ms=ms.filter(m=>(m.bodyType||'').toLowerCase()===f.body);
   if(f.ethnicity) ms=ms.filter(m=>(m.ethnicity||'').toLowerCase()===f.ethnicity);
@@ -1128,7 +1194,39 @@ document.getElementById('user-pill').addEventListener('click', e => {
 
 document.addEventListener('click', () => {
   document.getElementById('user-menu').style.display = 'none';
+  document.getElementById('src-menu').classList.remove('show');
 });
+
+// ══════════════════════════════════════
+// SOURCES TOGGLE
+// ══════════════════════════════════════
+function syncSrcUI() {
+  document.getElementById('src-cnt').textContent = enabledSources().length;
+  document.querySelectorAll('[data-src-toggle]').forEach(cb => {
+    const k = cb.dataset.srcToggle;
+    cb.checked = !!(SOURCES[k] && SOURCES[k].enabled);
+  });
+}
+document.getElementById('src-pill').addEventListener('click', e => {
+  e.stopPropagation();
+  const m = document.getElementById('src-menu');
+  // Position relative to pill on each open
+  const r = e.currentTarget.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(window.innerWidth - 220, r.left)) + 'px';
+  m.classList.toggle('show');
+});
+document.getElementById('src-menu').addEventListener('click', e => e.stopPropagation());
+document.querySelectorAll('[data-src-toggle]').forEach(cb => {
+  cb.addEventListener('change', e => {
+    const k = e.target.dataset.srcToggle;
+    const ok = setSourceEnabled(k, e.target.checked);
+    if (!ok) { e.target.checked = true; return; }       // reverted: all-off blocked
+    A.track('src_toggle', { key: k, enabled: e.target.checked });
+    syncSrcUI();
+    load();                                              // re-fetch + re-render grid
+  });
+});
+syncSrcUI();
 
 async function doLogout() {
   try { await apiPost('/auth/logout', {}); } catch(e) {}
@@ -1443,9 +1541,22 @@ async function renderMG() {
     try {
       const f = S.f;
       const p = new URLSearchParams({limit:'200',sortBy:'viewersCount',gender:f.gender});
-      const r = await fetch(`https://go.stripchat.com/api/models?${p}`);
-      const d = await r.json();
-      pool = (d.models||d.data||[]).filter(m=>m.status==='public'&&m.stream&&m.stream.urls);
+      const srcs = enabledSources();
+      const settled = await Promise.allSettled(srcs.map(([key,s]) =>
+        fetch(`${s.api}/api/models?${p}`).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>({key,d}))
+      ));
+      const seen = new Map();
+      for (const r of settled) {
+        if (r.status!=='fulfilled') continue;
+        const {key,d} = r.value;
+        for (const m of (d.models||d.data||[])) {
+          const u=(m.username||'').toLowerCase();
+          if (!u || seen.has(u)) continue;
+          m._src = key;
+          seen.set(u, m);
+        }
+      }
+      pool = Array.from(seen.values()).filter(m=>m.status==='public'&&m.stream&&m.stream.urls);
     } catch(e) {
       pool = S.models;
     }
@@ -1494,7 +1605,7 @@ async function renderMG() {
     const cta = document.createElement('a');
     cta.style.cssText = 'position:absolute;bottom:40px;left:50%;transform:translateX(-50%) translateY(8px);background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:12px;font-weight:800;padding:8px 20px;border-radius:100px;text-decoration:none;opacity:0;transition:all .2s;box-shadow:0 4px 16px rgba(255,62,138,.4);white-space:nowrap;pointer-events:none';
     cta.textContent = '🔒 Go Private';
-    cta.href = aurl(m.username);
+    cta.href = aurl(m.username, m._src);
     cta.target = '_blank';
     cta.rel = 'noopener';
     tile.appendChild(cta);
