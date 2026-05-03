@@ -75,6 +75,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 #src-menu .src-row:hover{background:var(--surface)}
 #src-menu .src-row input{accent-color:var(--pink);cursor:pointer;width:14px;height:14px;flex-shrink:0}
 #src-menu .src-row .src-lbl{font-size:12px;color:var(--text);font-weight:600}
+#src-menu .src-row .src-beta{font-size:8px;font-weight:800;background:rgba(255,184,77,.15);color:#ffb84d;border:1px solid rgba(255,184,77,.4);padding:1px 5px;border-radius:100px;letter-spacing:.6px;margin-left:auto}
 #src-menu .src-foot{padding:8px 8px 4px;font-size:10px;color:var(--text2);border-top:1px solid var(--border);margin-top:6px;line-height:1.4}
 #lcnt{font-size:11px;color:var(--text2);white-space:nowrap;flex-shrink:0}
 
@@ -474,9 +475,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <!-- SOURCES MENU -->
 <div id="src-menu">
   <div class="src-hd">Cam Networks</div>
-  <label class="src-row"><input type="checkbox" data-src-toggle="stripchat"><span class="src-lbl">Stripchat</span></label>
-  <label class="src-row"><input type="checkbox" data-src-toggle="xhamsterlive"><span class="src-lbl">xHamsterLive</span></label>
-  <div class="src-foot">Both networks share the same models. Toggling adjusts which brand opens on click-out.</div>
+  <div id="src-rows"><!-- rendered dynamically from SOURCES --></div>
+  <div class="src-foot">Stripchat + xHamsterLive share the same model pool (xHL is a Stripchat whitelabel). BongaCams is a different network with different models.</div>
 </div>
 
 <!-- PAYWALL -->
@@ -651,13 +651,87 @@ const V = {id:'v1',free_minutes:2,reset_hours:3,price:9.99,modal_copy:'A',
   max_paid_grid:6,    // paid: 6x6=36
 };
 const AFF = {id:'',campaign:'mycamgirlz'};
-// ── SOURCES — toggleable cam networks. Stripchat + xHamsterLive share backend (xHL is a Stripchat whitelabel).
-//    Enable/disable independently. When both on, results are merged + deduped by username.
-//    aurl() respects each model's source-of-record so click-outs preserve brand continuity.
-//    User toggle persists to localStorage key 'mcg_sources'. At least one source must remain enabled.
+// ── SOURCES — toggleable cam networks. Each entry is a self-describing dispatch
+//    record: how to fetch the listing, how to parse + normalize models into a
+//    canonical shape, and how to build a click-out affiliate URL.
+//
+//   Stripchat + xHamsterLive share a backend (xHL is a Stripchat whitelabel).
+//   BongaCams is a true second network — different models, different affiliate
+//   program (Bongacash). Listing CORS is closed so we route through a tiny
+//   Cloudflare Pages Function at /api/sources/bongacams. HLS bytes still flow
+//   direct from each network's CDN to the user, so bandwidth on our box stays ~0.
+//
+//   When multiple are enabled, results are merged + deduped by lowercased username
+//   (collisions across distinct networks are rare). Click-outs use each model's
+//   source-of-record so brand continuity is preserved.
+//
+//   User toggle persists to localStorage 'mcg_sources'. At least one source must
+//   remain enabled.
 const SOURCES = {
-  stripchat:    { api:'https://go.stripchat.com',    site:'https://stripchat.com',    label:'Stripchat',    enabled:true },
-  xhamsterlive: { api:'https://go.xhamsterlive.com', site:'https://xhamsterlive.com', label:'xHamsterLive', enabled:true },
+  stripchat: {
+    label: 'Stripchat',
+    enabled: true,
+    listing: (f) => {
+      const p = new URLSearchParams({limit:'200',sortBy:f.sort,gender:f.gender});
+      if(f.tag) p.set('tag',f.tag);
+      if(f.country) p.set('country',f.country);
+      return `https://go.stripchat.com/api/models?${p}`;
+    },
+    parseList: (d) => d.models || d.data || [],
+    normalize: (m) => m, // canonical shape — no normalization
+    aurl: (u) => AFF.id
+      ? `https://go.stripchat.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
+      : `https://stripchat.com/${u}`,
+  },
+  xhamsterlive: {
+    label: 'xHamsterLive',
+    enabled: true,
+    listing: (f) => {
+      const p = new URLSearchParams({limit:'200',sortBy:f.sort,gender:f.gender});
+      if(f.tag) p.set('tag',f.tag);
+      if(f.country) p.set('country',f.country);
+      return `https://go.xhamsterlive.com/api/models?${p}`;
+    },
+    parseList: (d) => d.models || d.data || [],
+    normalize: (m) => m,
+    aurl: (u) => AFF.id
+      ? `https://go.xhamsterlive.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
+      : `https://xhamsterlive.com/${u}`,
+  },
+  bongacams: {
+    label: 'BongaCams',
+    enabled: false, // default OFF — opt-in until we validate end-to-end
+    // Listing comes via our CF Pages Function which fixes the closed-CORS upstream.
+    // BongaCams listing API takes only livetab/offset; client-side filters apply post-normalize.
+    listing: (f) => {
+      const livetab = f.gender === 'female' ? 'female'
+                    : f.gender === 'male'   ? 'male'
+                    : f.gender === 'couple' ? 'couples'
+                    : f.gender === 'trans'  ? 'transsexual'
+                    : 'female';
+      return `/api/sources/bongacams?livetab=${encodeURIComponent(livetab)}&offset=0`;
+    },
+    parseList: (d) => (d.models || []).filter(m => m.room === 'public' && m.username && m.esid),
+    // BongaCams schema → canonical MCG shape (matches Stripchat fields)
+    normalize: (m) => ({
+      username:         m.username,
+      gender:           m.gender,
+      country:          null,                       // not in listing
+      age:              null,
+      bodyType:         null,
+      ethnicity:        null,
+      viewersCount:     m.viewers || 0,
+      onlineTime:       null,
+      tags:             [],                         // not in listing
+      status:           'public',
+      broadcastHD:      /1080|720/.test(m.vq || ''),
+      isNew:            false,
+      snapshotUrl:      m.thumb_image ? 'https:' + m.thumb_image.replace('{ext}', 'jpg') : '',
+      widgetPreviewUrl: m.thumb_image ? 'https:' + m.thumb_image.replace('{ext}', 'jpg') : '',
+      stream: { urls: { original: `https://${m.esid}.bcvcdn.com/hls/stream_${m.username}/playlist.m3u8` } },
+    }),
+    aurl: (u) => `https://bongacams.com/${u}`,
+  },
 };
 // Restore user toggle state from localStorage (silently ignore parse errors / unknown keys)
 try {
@@ -679,9 +753,7 @@ function setSourceEnabled(key, on) {
 }
 const aurl = (u, srcKey) => {
   const s = SOURCES[srcKey] || SOURCES.stripchat;
-  return AFF.id
-    ? `${s.api}/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
-    : `${s.site}/${u}`;
+  return s.aurl ? s.aurl(u) : `https://stripchat.com/${u}`;
 };
 
 // ── ANALYTICS ──────────────────────────────────────────
@@ -888,22 +960,22 @@ function showEmpty(v)   { document.getElementById('empty-state').classList.toggl
 
 async function fetchModels() {
   const f=S.f;
-  const p=new URLSearchParams({limit:'200',sortBy:f.sort,gender:f.gender});
-  if(f.tag) p.set('tag',f.tag);
-  if(f.country) p.set('country',f.country);
   const srcs=enabledSources();
   if(!srcs.length) throw new Error('no_sources');
-  // Fan out across enabled sources in parallel; tolerate per-source failure
+  // Fan out across enabled sources in parallel; each source provides its own listing URL,
+  // parse function, and normalizer so its native schema is mapped into MCG's canonical shape.
   const settled=await Promise.allSettled(srcs.map(([key,s])=>
-    fetch(`${s.api}/api/models?${p}`).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>({key,d}))
+    fetch(s.listing(f)).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>({key,s,d}))
   ));
-  // Dedupe by lowercased username — first-source-wins (Stripchat first by SOURCES iteration order)
+  // Dedupe by lowercased username (collisions across distinct networks are rare).
+  // SOURCES iteration order = priority on collision; Stripchat comes first.
   const seen=new Map();
   for(const r of settled){
     if(r.status!=='fulfilled') continue;
-    const {key,d}=r.value;
-    const arr=d.models||d.data||[];
-    for(const m of arr){
+    const {key,s,d}=r.value;
+    const raw = s.parseList(d) || [];
+    for(const rawM of raw){
+      const m = s.normalize(rawM);
       const u=(m.username||'').toLowerCase();
       if(!u||seen.has(u)) continue;
       m._src=key;            // stamp source-of-record for later aurl() routing
@@ -1200,6 +1272,30 @@ document.addEventListener('click', () => {
 // ══════════════════════════════════════
 // SOURCES TOGGLE
 // ══════════════════════════════════════
+
+// Render a row per SOURCES entry. Sources whose default is `false` get a BETA badge.
+// (We snapshot `enabled` state to localStorage, so we infer "default-off" from
+//  whether the user has ever explicitly toggled them.)
+const SRC_BETA = new Set(['bongacams']);  // explicit BETA list — survives localStorage state
+function renderSrcRows() {
+  const host = document.getElementById('src-rows');
+  if (!host) return;
+  host.innerHTML = Object.entries(SOURCES).map(([key, s]) => {
+    const beta = SRC_BETA.has(key) ? '<span class="src-beta">BETA</span>' : '';
+    return `<label class="src-row"><input type="checkbox" data-src-toggle="${key}"><span class="src-lbl">${s.label}</span>${beta}</label>`;
+  }).join('');
+  // (Re)wire change listeners on the freshly-rendered checkboxes
+  host.querySelectorAll('[data-src-toggle]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const k = e.target.dataset.srcToggle;
+      const ok = setSourceEnabled(k, e.target.checked);
+      if (!ok) { e.target.checked = true; return; }       // reverted: all-off blocked
+      A.track('src_toggle', { key: k, enabled: e.target.checked });
+      syncSrcUI();
+      load();                                              // re-fetch + re-render grid
+    });
+  });
+}
 function syncSrcUI() {
   document.getElementById('src-cnt').textContent = enabledSources().length;
   document.querySelectorAll('[data-src-toggle]').forEach(cb => {
@@ -1216,16 +1312,7 @@ document.getElementById('src-pill').addEventListener('click', e => {
   m.classList.toggle('show');
 });
 document.getElementById('src-menu').addEventListener('click', e => e.stopPropagation());
-document.querySelectorAll('[data-src-toggle]').forEach(cb => {
-  cb.addEventListener('change', e => {
-    const k = e.target.dataset.srcToggle;
-    const ok = setSourceEnabled(k, e.target.checked);
-    if (!ok) { e.target.checked = true; return; }       // reverted: all-off blocked
-    A.track('src_toggle', { key: k, enabled: e.target.checked });
-    syncSrcUI();
-    load();                                              // re-fetch + re-render grid
-  });
-});
+renderSrcRows();
 syncSrcUI();
 
 async function doLogout() {
@@ -1539,17 +1626,17 @@ async function renderMG() {
   let pool = S.models.length >= 50 ? S.models : [];
   if (!pool.length) {
     try {
-      const f = S.f;
-      const p = new URLSearchParams({limit:'200',sortBy:'viewersCount',gender:f.gender});
+      const f = { ...S.f, sort: 'viewersCount' };
       const srcs = enabledSources();
       const settled = await Promise.allSettled(srcs.map(([key,s]) =>
-        fetch(`${s.api}/api/models?${p}`).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>({key,d}))
+        fetch(s.listing(f)).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>({key,s,d}))
       ));
       const seen = new Map();
       for (const r of settled) {
         if (r.status!=='fulfilled') continue;
-        const {key,d} = r.value;
-        for (const m of (d.models||d.data||[])) {
+        const {key,s,d} = r.value;
+        for (const rawM of (s.parseList(d) || [])) {
+          const m = s.normalize(rawM);
           const u=(m.username||'').toLowerCase();
           if (!u || seen.has(u)) continue;
           m._src = key;
