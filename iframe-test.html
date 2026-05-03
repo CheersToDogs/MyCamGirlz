@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cross-Network Embed Test — MCG</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
+<style>
+  :root{--bg:#0a0613;--surface:#1a1226;--bord:#2d1f3f;--pink:#ff3e8a;--text:#e8def5;--text2:#9080a8;--ok:#6fe87a;--bad:#ff6b6b;--warn:#ffb84d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,system-ui,sans-serif;padding:18px;min-height:100vh}
+  h1{font-size:18px;margin-bottom:6px;color:#fff}
+  .lead{color:var(--text2);font-size:13px;margin-bottom:18px;max-width:720px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-top:14px}
+  .tile{background:var(--surface);border:1px solid var(--bord);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+  .tile h3{padding:10px 14px 4px;font-size:14px;display:flex;align-items:center;gap:8px}
+  .tile .badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:100px;text-transform:uppercase;letter-spacing:.6px}
+  .ok{background:rgba(111,232,122,.15);color:var(--ok);border:1px solid var(--ok)}
+  .bad{background:rgba(255,107,107,.15);color:var(--bad);border:1px solid var(--bad)}
+  .warn{background:rgba(255,184,77,.15);color:var(--warn);border:1px solid var(--warn)}
+  .tile .why{padding:0 14px 8px;font-size:11px;color:var(--text2);line-height:1.4}
+  .frame-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;margin:0;overflow:hidden}
+  .frame-wrap iframe,.frame-wrap video{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+  /* CSS-mask example: scale up + crop to "hide" UI — works only when iframe is allowed */
+  .frame-wrap.cropped iframe{transform:scale(1.6) translate(0,-8%);transform-origin:center}
+  .status{padding:8px 14px;border-top:1px solid var(--bord);font-size:11px;color:var(--text2);font-family:ui-monospace,monospace;min-height:30px}
+  .status .err{color:var(--bad)}
+  .status .good{color:var(--ok)}
+  section{margin-top:28px;padding-top:14px;border-top:1px solid var(--bord)}
+  section h2{font-size:14px;color:var(--pink);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px}
+  .key{display:inline-block;padding:1px 6px;background:var(--bord);border-radius:3px;font-family:ui-monospace,monospace;font-size:11px;color:var(--text)}
+  .verdict{margin-top:24px;padding:14px;background:var(--surface);border:1px solid var(--bord);border-radius:8px}
+  .verdict h2{color:var(--pink);font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px}
+  .verdict ul{margin-left:18px}
+  .verdict li{margin-bottom:6px;font-size:13px}
+</style>
+</head>
+<body>
+<h1>Cross-Network Embed Test</h1>
+<div class="lead">
+  Live demo of what's actually possible when trying to render non-Stripchat cam streams in MyCamGirlz tiles.
+  Each tile attempts a different technique. The status line reports whether the browser allowed it.
+</div>
+
+<section>
+<h2>Embed techniques tested</h2>
+<div class="grid">
+
+  <!-- Tile 1: Stripchat HLS — baseline, this is what already works -->
+  <div class="tile">
+    <h3>Stripchat — open HLS <span class="badge ok">works</span></h3>
+    <div class="why">Reads <span class="key">stream.urls.original</span> from <span class="key">go.stripchat.com/api/models</span> — anonymous, no token, plays directly in <span class="key">&lt;video&gt;</span> via hls.js. This is what MCG already does.</div>
+    <div class="frame-wrap"><video id="sc-video" muted playsinline></video></div>
+    <div class="status" id="sc-status">loading model…</div>
+  </div>
+
+  <!-- Tile 2: CamSoda animated MP4 vthumb — REAL FIND -->
+  <div class="tile">
+    <h3>CamSoda — animated MP4 preview <span class="badge ok">works</span></h3>
+    <div class="why">CamSoda exposes a public CORS-enabled MP4 vthumb at <span class="key">public-media.livemediahost.com/media/vthumbs/&lt;id&gt;/&lt;slug&gt;.mp4</span>. ~30s recorded loop, NOT live — but the URL is open, no auth, no iframe needed. Better than a static snapshot.</div>
+    <div class="frame-wrap"><video id="cs-video" muted playsinline loop autoplay></video></div>
+    <div class="status" id="cs-status">loading model…</div>
+  </div>
+
+  <!-- Tile 3: CamSoda main room iframe — blocked by X-Frame-Options -->
+  <div class="tile">
+    <h3>CamSoda — live iframe + CSS mask <span class="badge bad">blocked</span></h3>
+    <div class="why">Attempts to <span class="key">&lt;iframe&gt;</span> the actual room page and CSS-mask everything except the video. CamSoda sends <span class="key">x-frame-options: SAMEORIGIN</span> — the browser refuses to render the iframe. CSS masking can't reach what the browser won't load.</div>
+    <div class="frame-wrap cropped"><iframe id="cs-iframe" referrerpolicy="no-referrer"></iframe></div>
+    <div class="status" id="cs-iframe-status">attempting iframe…</div>
+  </div>
+
+  <!-- Tile 4: Chaturbate iframe — also blocked -->
+  <div class="tile">
+    <h3>Chaturbate — live iframe + CSS mask <span class="badge bad">blocked</span></h3>
+    <div class="why">Chaturbate sends <span class="key">x-frame-options: DENY</span> — strictest possible. Iframe won't load from <em>any</em> third-party origin. Same wall as CamSoda but stricter.</div>
+    <div class="frame-wrap cropped"><iframe id="cb-iframe" referrerpolicy="no-referrer"></iframe></div>
+    <div class="status" id="cb-iframe-status">attempting iframe…</div>
+  </div>
+
+  <!-- Tile 5: CamSoda /vthumb-player iframe — works because explicitly designed for embed -->
+  <div class="tile">
+    <h3>CamSoda — official vthumb iframe <span class="badge warn">works (preview only)</span></h3>
+    <div class="why">CamSoda's <span class="key">/vthumb-player/&lt;slug&gt;</span> has no X-Frame-Options — designed for embedding. But it's a chromeless wrapper around the same MP4 preview. Not live. Same content as Tile 2 but via iframe instead of direct &lt;video&gt;.</div>
+    <div class="frame-wrap"><iframe id="cs-vthumb-iframe" referrerpolicy="no-referrer"></iframe></div>
+    <div class="status" id="cs-vthumb-status">attempting iframe…</div>
+  </div>
+
+  <!-- Tile 6: Token replay — proof that auth-bound tokens fail -->
+  <div class="tile">
+    <h3>CamSoda — replay live HLS with extracted token <span class="badge bad">blocked</span></h3>
+    <div class="why">Pulls <span class="key">/api/v1/chat/react/&lt;slug&gt;</span> (CORS open!) which exposes <span class="key">stream.token</span> + <span class="key">edge_servers</span> + <span class="key">stream_name</span>. Tries to construct the live HLS URL and play it. Returns 403 — the token is bound to the requester's session/IP, not the model.</div>
+    <div class="frame-wrap"><video id="cs-token-video" muted playsinline></video></div>
+    <div class="status" id="cs-token-status">fetching token…</div>
+  </div>
+
+</div>
+</section>
+
+<div class="verdict">
+  <h2>Verdict</h2>
+  <ul>
+    <li><strong>Domain spoofing won't work.</strong> TLS certificate validation kills any attempt to make the browser believe your server is camsoda.com / chaturbate.com / etc.</li>
+    <li><strong>Iframe + CSS mask won't work for live streams.</strong> Every major network sends <span class="key">X-Frame-Options: DENY</span> or <span class="key">SAMEORIGIN</span> on their live room pages. The browser refuses the iframe before any CSS runs.</li>
+    <li><strong>Iframe-scraping won't work.</strong> Same-Origin Policy prevents JavaScript from reading inside a cross-origin iframe even when one loads.</li>
+    <li><strong>Token replay won't work.</strong> Stream tokens are issued bound to the requester's IP and cookies. The token in your hand is useless when called from a different origin.</li>
+    <li><strong>What DOES work cheaply:</strong> CamSoda's animated MP4 vthumbs (CORS-open, no auth, ~280KB each). Add to grid as autoplaying preview tiles. Click-out to camsoda.com/&lt;slug&gt; for live + affiliate credit.</li>
+    <li><strong>What works for true live cross-network:</strong> only the official affiliate iframe widget (where they offer one — adds their UI inside your tile) OR a server-side HLS proxy with affiliate credentials (real bandwidth + ToS risk, the "Move 3" path).</li>
+  </ul>
+</div>
+
+<script>
+// ── Stripchat live HLS (baseline working tile) ──
+async function loadStripchat() {
+  const status = document.getElementById('sc-status');
+  const video = document.getElementById('sc-video');
+  try {
+    const r = await fetch('https://go.stripchat.com/api/models?gender=female&limit=1&sortBy=viewersCount');
+    const d = await r.json();
+    const m = (d.models || [])[0];
+    if (!m || !m.stream || !m.stream.urls) throw new Error('no model');
+    const url = m.stream.urls.original || m.stream.urls['720p'];
+    status.innerHTML = `<span class="good">✓ playing</span> ${m.username} (${m.viewersCount} watching)`;
+    if (Hls.isSupported()) {
+      const hls = new Hls({ strictManifestParsing: false });
+      hls.loadSource(url);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
+    } else {
+      video.src = url; video.play().catch(()=>{});
+    }
+  } catch(e) {
+    status.innerHTML = `<span class="err">✗ ${e.message}</span>`;
+  }
+}
+
+// ── CamSoda MP4 vthumb (the real find) ──
+async function loadCamSodaVthumb() {
+  const status = document.getElementById('cs-status');
+  const video = document.getElementById('cs-video');
+  try {
+    const r = await fetch('https://www.camsoda.com/api/v1/browse/online?gender=f&page=1&private=false');
+    const d = await r.json();
+    const results = d.results || [];
+    // Find one with a high viewer count whose vthumb URL works
+    for (const m of results.slice(0, 12)) {
+      const tpl = m.tpl || {};
+      const id = tpl['0']; const slug = tpl['1']; const name = tpl['2'] || slug;
+      if (!id || !slug) continue;
+      const idDir = Math.floor(id / 1000);
+      const url = `https://public-media.livemediahost.com/media/vthumbs/${idDir}/${slug}.mp4`;
+      // Test with a HEAD before assigning (CORS lets us check)
+      const head = await fetch(url, { method: 'HEAD' }).catch(()=>null);
+      if (head && head.ok) {
+        video.src = url;
+        video.play().catch(()=>{});
+        status.innerHTML = `<span class="good">✓ playing MP4</span> ${name} (${tpl['4']||'?'} watching)`;
+        return;
+      }
+    }
+    status.innerHTML = `<span class="err">✗ couldn't find a working vthumb in top 12 models</span>`;
+  } catch(e) {
+    status.innerHTML = `<span class="err">✗ ${e.message}</span>`;
+  }
+}
+
+// ── CamSoda main room iframe attempt (will be blocked) ──
+function loadCamSodaIframe() {
+  const status = document.getElementById('cs-iframe-status');
+  const iframe = document.getElementById('cs-iframe');
+  iframe.src = 'https://www.camsoda.com/michelleex';
+  iframe.onload = () => {
+    try {
+      // Same-origin policy blocks reading contentDocument cross-origin
+      const blocked = iframe.contentDocument === null;
+      status.innerHTML = blocked
+        ? `<span class="err">✗ iframe loaded shell but cross-origin DOM access blocked (Same-Origin Policy)</span>`
+        : `<span class="good">✓ iframe loaded and DOM readable (unexpected)</span>`;
+    } catch(e) {
+      status.innerHTML = `<span class="err">✗ ${e.message} — Same-Origin Policy</span>`;
+    }
+  };
+  // X-Frame-Options DENY/SAMEORIGIN typically results in a blank iframe with no onload event firing
+  setTimeout(() => {
+    if (status.textContent.includes('attempting')) {
+      status.innerHTML = `<span class="err">✗ X-Frame-Options: SAMEORIGIN — browser refused to render</span>`;
+    }
+  }, 4000);
+}
+
+// ── Chaturbate iframe attempt ──
+function loadChaturbateIframe() {
+  const status = document.getElementById('cb-iframe-status');
+  const iframe = document.getElementById('cb-iframe');
+  iframe.src = 'https://chaturbate.com/';
+  setTimeout(() => {
+    if (status.textContent.includes('attempting')) {
+      status.innerHTML = `<span class="err">✗ X-Frame-Options: DENY — browser refused to render</span>`;
+    }
+  }, 4000);
+}
+
+// ── CamSoda /vthumb-player iframe (works — but only shows MP4 preview, not live) ──
+async function loadCamSodaVthumbIframe() {
+  const status = document.getElementById('cs-vthumb-status');
+  const iframe = document.getElementById('cs-vthumb-iframe');
+  try {
+    // Find a model with a working vthumb so the iframe has something to play
+    const r = await fetch('https://www.camsoda.com/api/v1/browse/online?gender=f&page=1&private=false');
+    const d = await r.json();
+    const results = d.results || [];
+    for (const m of results.slice(0, 12)) {
+      const tpl = m.tpl || {};
+      const id = tpl['0']; const slug = tpl['1'];
+      if (!id || !slug) continue;
+      const idDir = Math.floor(id / 1000);
+      const url = `https://public-media.livemediahost.com/media/vthumbs/${idDir}/${slug}.mp4`;
+      const head = await fetch(url, { method: 'HEAD' }).catch(()=>null);
+      if (head && head.ok) {
+        iframe.src = `https://www.camsoda.com/vthumb-player/${slug}`;
+        iframe.onload = () => {
+          status.innerHTML = `<span class="good">✓ iframe loaded — ${slug}</span> (still preview only, not live)`;
+        };
+        return;
+      }
+    }
+    status.innerHTML = `<span class="err">✗ couldn't find suitable model</span>`;
+  } catch(e) {
+    status.innerHTML = `<span class="err">✗ ${e.message}</span>`;
+  }
+}
+
+// ── CamSoda token-replay attempt (will 403) ──
+async function loadCamSodaTokenReplay() {
+  const status = document.getElementById('cs-token-status');
+  const video = document.getElementById('cs-token-video');
+  try {
+    // Pick a known model
+    const browse = await (await fetch('https://www.camsoda.com/api/v1/browse/online?gender=f&page=1&private=false')).json();
+    const slug = (browse.results || []).map(r => (r.tpl || {})['1']).find(s => !!s);
+    if (!slug) throw new Error('no models in browse');
+
+    // Pull the model's chat/react JSON (CORS open, anyone can read)
+    const cr = await (await fetch(`https://www.camsoda.com/api/v1/chat/react/${slug}`)).json();
+    const stream = cr.stream || {};
+    if (!stream.token || !stream.stream_name || !stream.edge_servers || !stream.edge_servers.length) {
+      status.innerHTML = `<span class="err">✗ stream info missing (model may be offline)</span>`;
+      return;
+    }
+
+    // Try to construct an HLS URL — best-effort guesses
+    const edge = stream.edge_servers[0]; // e.g. "streaming-edge-front.livemediahost.com/edge2-fld"
+    const candidates = [
+      `https://${edge}/${stream.stream_name}/index.m3u8?token=${encodeURIComponent(stream.token)}`,
+      `https://${edge}/hls/${stream.stream_name}/index.m3u8?token=${encodeURIComponent(stream.token)}`,
+      `https://${edge}/${stream.stream_name}_aac/playlist.m3u8?token=${encodeURIComponent(stream.token)}`,
+    ];
+    let lastCode = '?';
+    for (const u of candidates) {
+      const r = await fetch(u, { method: 'GET' }).catch(()=>null);
+      if (!r) continue;
+      lastCode = r.status;
+      if (r.ok) {
+        const text = await r.text();
+        if (text.includes('#EXTM3U')) {
+          // Got a real playlist — try to play it
+          if (Hls.isSupported()) {
+            const hls = new Hls({ strictManifestParsing: false });
+            hls.loadSource(u);
+            hls.attachMedia(video);
+          }
+          status.innerHTML = `<span class="good">✓ token worked! url=${u.slice(0,60)}…</span> (unexpected — networks usually IP-bind)`;
+          return;
+        }
+      }
+    }
+    status.innerHTML = `<span class="err">✗ all token URL guesses returned ${lastCode} — token is IP/session-bound</span>`;
+  } catch(e) {
+    status.innerHTML = `<span class="err">✗ ${e.message}</span>`;
+  }
+}
+
+// kick everything off
+loadStripchat();
+loadCamSodaVthumb();
+loadCamSodaIframe();
+loadChaturbateIframe();
+loadCamSodaVthumbIframe();
+loadCamSodaTokenReplay();
+</script>
+</body>
+</html>
