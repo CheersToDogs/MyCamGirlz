@@ -476,7 +476,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <div id="src-menu">
   <div class="src-hd">Cam Networks</div>
   <div id="src-rows"><!-- rendered dynamically from SOURCES --></div>
-  <div class="src-foot">Stripchat + xHamsterLive share the same model pool (xHL is a Stripchat whitelabel). BongaCams and Cam4 are different networks with different models.</div>
+  <div class="src-foot">Stripchat row covers both Stripchat &amp; xHamsterLive (same backend; we fetch both feeds and merge to capture small boundary differences). BongaCams and Cam4 are independent networks.</div>
 </div>
 
 <!-- PAYWALL -->
@@ -669,34 +669,28 @@ const AFF = {id:'',campaign:'mycamgirlz'};
 //   remain enabled.
 const SOURCES = {
   stripchat: {
+    // Stripchat + xHamsterLive share a backend (xHL is a Stripchat whitelabel).
+    // Roster overlap is ~96% with ~4% boundary drift (different pagination cuts,
+    // not different models). We fetch BOTH endpoints in parallel and dedupe so
+    // the union captures the boundary models without double-counting. Click-outs
+    // route to stripchat.com — Stripcash affiliate covers both brands either way.
     label: 'Stripchat',
     enabled: true,
     listing: (f) => {
       const p = new URLSearchParams({limit:'200',sortBy:f.sort,gender:f.gender});
       if(f.tag) p.set('tag',f.tag);
       if(f.country) p.set('country',f.country);
-      return `https://go.stripchat.com/api/models?${p}`;
+      // Returning an array fans out to multiple upstream URLs in parallel.
+      return [
+        `https://go.stripchat.com/api/models?${p}`,
+        `https://go.xhamsterlive.com/api/models?${p}`,
+      ];
     },
     parseList: (d) => d.models || d.data || [],
     normalize: (m) => m, // canonical shape — no normalization
     aurl: (u) => AFF.id
       ? `https://go.stripchat.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
       : `https://stripchat.com/${u}`,
-  },
-  xhamsterlive: {
-    label: 'xHamsterLive',
-    enabled: true,
-    listing: (f) => {
-      const p = new URLSearchParams({limit:'200',sortBy:f.sort,gender:f.gender});
-      if(f.tag) p.set('tag',f.tag);
-      if(f.country) p.set('country',f.country);
-      return `https://go.xhamsterlive.com/api/models?${p}`;
-    },
-    parseList: (d) => d.models || d.data || [],
-    normalize: (m) => m,
-    aurl: (u) => AFF.id
-      ? `https://go.xhamsterlive.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
-      : `https://xhamsterlive.com/${u}`,
   },
   bongacams: {
     label: 'BongaCams',
@@ -777,6 +771,14 @@ const SOURCES = {
 // Restore user toggle state from localStorage (silently ignore parse errors / unknown keys)
 try {
   const saved=JSON.parse(localStorage.getItem('mcg_sources')||'{}');
+  // Migrate legacy 'xhamsterlive' key — it's been folded into 'stripchat' (same backend).
+  // If the user had either toggle on, the merged stripchat source stays on. Drop the
+  // stale key from storage so we don't keep migrating on every load.
+  if ('xhamsterlive' in saved) {
+    saved.stripchat = (saved.stripchat === true) || (saved.xhamsterlive === true);
+    delete saved.xhamsterlive;
+    try { localStorage.setItem('mcg_sources', JSON.stringify(saved)); } catch(e) {}
+  }
   for(const k of Object.keys(SOURCES)) if(typeof saved[k]==='boolean') SOURCES[k].enabled=saved[k];
 } catch(e) {}
 const enabledSources = () => Object.entries(SOURCES).filter(([,s])=>s.enabled);
@@ -1003,10 +1005,18 @@ async function fetchModels() {
   const f=S.f;
   const srcs=enabledSources();
   if(!srcs.length) throw new Error('no_sources');
-  // Fan out across enabled sources in parallel; each source provides its own listing URL,
-  // parse function, and normalizer so its native schema is mapped into MCG's canonical shape.
-  const settled=await Promise.allSettled(srcs.map(([key,s])=>
-    fetch(s.listing(f)).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>({key,s,d}))
+  // Fan out across enabled sources in parallel; each source provides its own listing URL(s),
+  // parse function, and normalizer. A source may return an array of URLs from listing() to
+  // fetch multiple endpoints in parallel (e.g. Stripchat + xHL whitelabel — same backend,
+  // ~4% boundary drift between the two paginated feeds).
+  const fetches = [];
+  for (const [key, s] of srcs) {
+    const urlOrArr = s.listing(f);
+    const urls = Array.isArray(urlOrArr) ? urlOrArr : [urlOrArr];
+    for (const url of urls) fetches.push({ key, s, url });
+  }
+  const settled=await Promise.allSettled(fetches.map(({key,s,url})=>
+    fetch(url).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>({key,s,d}))
   ));
   // Dedupe by lowercased username (collisions across distinct networks are rare).
   // SOURCES iteration order = priority on collision; Stripchat comes first.
@@ -1669,8 +1679,14 @@ async function renderMG() {
     try {
       const f = { ...S.f, sort: 'viewersCount' };
       const srcs = enabledSources();
-      const settled = await Promise.allSettled(srcs.map(([key,s]) =>
-        fetch(s.listing(f)).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>({key,s,d}))
+      const fetches = [];
+      for (const [key, s] of srcs) {
+        const urlOrArr = s.listing(f);
+        const urls = Array.isArray(urlOrArr) ? urlOrArr : [urlOrArr];
+        for (const url of urls) fetches.push({ key, s, url });
+      }
+      const settled = await Promise.allSettled(fetches.map(({key,s,url}) =>
+        fetch(url).then(r=>r.ok?r.json():Promise.reject(r.status)).then(d=>({key,s,d}))
       ));
       const seen = new Map();
       for (const r of settled) {
