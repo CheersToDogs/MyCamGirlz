@@ -476,7 +476,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <div id="src-menu">
   <div class="src-hd">Cam Networks</div>
   <div id="src-rows"><!-- rendered dynamically from SOURCES --></div>
-  <div class="src-foot">Stripchat + xHamsterLive share the same model pool (xHL is a Stripchat whitelabel). BongaCams is a different network with different models.</div>
+  <div class="src-foot">Stripchat + xHamsterLive share the same model pool (xHL is a Stripchat whitelabel). BongaCams and Cam4 are different networks with different models.</div>
 </div>
 
 <!-- PAYWALL -->
@@ -731,6 +731,47 @@ const SOURCES = {
       stream: { urls: { original: `https://${m.esid}.bcvcdn.com/hls/stream_${m.username}/playlist.m3u8` } },
     }),
     aurl: (u) => `https://bongacams.com/${u}`,
+  },
+  cam4: {
+    label: 'Cam4',
+    enabled: false, // BETA — opt-in
+    // Cam4's /female (etc.) page server-renders an Apollo cache full of BroadcastItem
+    // entries. Our Pages Function fetches the page, parses out the entries, and returns
+    // clean { models: [...] } JSON. Each entry already includes the live HLS URL in
+    // preview.src — no second per-model call needed.
+    listing: (f) => {
+      const g = f.gender === 'female' ? 'female'
+              : f.gender === 'male'   ? 'male'
+              : f.gender === 'trans'  ? 'trans'
+              : f.gender === 'couple' ? 'couple'
+              : 'female';
+      return `/api/sources/cam4?gender=${encodeURIComponent(g)}`;
+    },
+    // Only public shows with a real HLS preview — drop private/groupshow/no-stream
+    parseList: (d) => (d.models || []).filter(m =>
+      m && m.username
+        && m.showType === 'PUBLIC_SHOW'
+        && m.preview && m.preview.sourceType === 'hls' && m.preview.src
+    ),
+    // Cam4 schema → MCG canonical
+    normalize: (m) => ({
+      username:         m.username,
+      gender:           (m.broadcastType || m.gender || 'female').toLowerCase(),
+      country:          (m.realCountry || m.country || '').toUpperCase() || null,
+      age:              null,                       // not in BroadcastItem (would need profile/info)
+      bodyType:         null,
+      ethnicity:        null,
+      viewersCount:     m.viewers || 0,
+      onlineTime:       null,
+      tags:             Array.isArray(m.tags) ? m.tags.map(t => (t && t.slug) || String(t)).filter(Boolean) : [],
+      status:           'public',
+      broadcastHD:      true,                        // Cam4 streams default to HD when available
+      isNew:            !!m.hasNewBroadcasterBadge,
+      snapshotUrl:      m.profileImageURL || '',
+      widgetPreviewUrl: m.profileImageURL || '',
+      stream:           { urls: { original: m.preview.src } },
+    }),
+    aurl: (u) => `https://www.cam4.com/${u}`,
   },
 };
 // Restore user toggle state from localStorage (silently ignore parse errors / unknown keys)
@@ -1276,7 +1317,7 @@ document.addEventListener('click', () => {
 // Render a row per SOURCES entry. Sources whose default is `false` get a BETA badge.
 // (We snapshot `enabled` state to localStorage, so we infer "default-off" from
 //  whether the user has ever explicitly toggled them.)
-const SRC_BETA = new Set(['bongacams']);  // explicit BETA list — survives localStorage state
+const SRC_BETA = new Set(['bongacams', 'cam4']);  // explicit BETA list — survives localStorage state
 function renderSrcRows() {
   const host = document.getElementById('src-rows');
   if (!host) return;
