@@ -699,7 +699,7 @@ function loadSess() {
     if (!S.paid) {
       const n = Date.now();
       if (d.cu && d.cu > n) { S.cd=true; S.cds=Math.ceil((d.cu-n)/1000); S.ts=0; }
-      else if (d.ex && d.ex > n) { S.ts=Math.ceil((d.ex-n)/1000); S.ta=true; }
+      else if (d.ex && d.ex > n) { S.ts=Math.ceil((d.ex-n)/1000); S.ta=true; tiv=setInterval(tickT,1000); renderT(); }
     }
   } catch(e) {}
 }
