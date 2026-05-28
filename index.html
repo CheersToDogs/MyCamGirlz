@@ -651,6 +651,9 @@ const V = {id:'v1',free_minutes:2,reset_hours:3,price:9.99,modal_copy:'A',
   max_free_grid:4,    // free account: scrolls to show 8 total (2x2 + 4 below)
   max_paid_grid:6,    // paid: 6x6=36
 };
+// Randomize free timer 90–180s — variable interval schedule (Skinner, 1938)
+// Uncertainty maximizes dopamine; fixed intervals allow habituation
+function randTimer() { return 90 + Math.floor(Math.random() * 91); } // 90–180s
 const AFF = {id:'',campaign:'mycamgirlz'};
 const aurl = u => AFF.id
   ? `https://go.stripchat.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
@@ -680,7 +683,7 @@ const S = {
   user: null,          // null=anon, {id,email,tier,verified} = logged in
   paid: false,
   // timer state
-  ta:false, ts:V.free_minutes*60, cd:false, cds:0,
+  ta:false, ts:0, cd:false, cds:0,
   // grid state
   n:2, models:[], hls:{}, at:null, paused:false,
   f:{gender:'female',sort:'viewersCount',country:'',tag:'',age:'',body:'',ethnicity:''},
@@ -717,20 +720,44 @@ let tiv = null;
 function startTimer() {
   if (S.paid||S.ta) return;
   S.ta = true;
+  S.ts = randTimer(); // randomized at engagement time, not page load
   const ex = Date.now() + S.ts*1000;
   saveSess({ex});
-  A.track('free_start',{mins:V.free_minutes});
+  A.track('free_start',{secs:S.ts});
   tiv = setInterval(tickT, 1000);
   renderT();
+}
+
+// ── ENGAGEMENT TRIGGER ─────────────────────────────────
+// Timer starts on first meaningful interaction, not page load.
+// Arousal requires ~60-90s from cold — don't burn the window early.
+// First scroll past header OR first tile interaction = engaged = hot state beginning.
+let _engOnce = false;
+function attachEngagementTrigger() {
+  if (S.paid||S.ta||_engOnce) return;
+  _engOnce = true;
+  function onEngage() {
+    if (S.paid||S.ta) return;
+    startTimer();
+    document.removeEventListener('click', onEngage);
+    document.removeEventListener('scroll', onEngage);
+    document.getElementById('grid')?.removeEventListener('mousemove', onEngage);
+  }
+  // Scroll, click on anything, or mouse movement over grid
+  document.addEventListener('scroll', onEngage, {once:true});
+  document.addEventListener('click', onEngage, {once:true});
+  document.getElementById('grid')?.addEventListener('mousemove', onEngage, {once:true});
 }
 
 function tickT() { if (S.ts<=0){clearInterval(tiv);expireT();return} S.ts--; renderT(); }
 
 function renderT() {
   const pill=document.getElementById('tpill'),dot=document.getElementById('tdot'),txt=document.getElementById('ttxt'),halo=document.getElementById('tpill-halo');
+  if(!pill) return;
   if (S.paid){pill.className='paid';halo.className='paid';dot.style.background='#6fe87a';txt.textContent='∞ Unlimited';return}
+  if (!S.ta||S.ts<=0){pill.className='';halo.className='';dot.style.background='#6fe87a';txt.textContent='FREE';return}
   const m=Math.floor(S.ts/60),s=S.ts%60;
-  txt.textContent=`${m}:${String(s).padStart(2,'0')} free`;
+  txt.textContent=`${m}:${String(s).padStart(2,'0')} left`;
   if(S.ts<=10){pill.className='crit';halo.className='crit';}
   else if(S.ts<=30){pill.className='warn';halo.className='warn';}
   else{pill.className='';halo.className='';}
@@ -782,7 +809,7 @@ function tickCD() {
   document.getElementById('cdl').style.display='block';
   const t = () => {
     if (S.cds<=0) {
-      S.cd=false; S.ts=V.free_minutes*60; S.ta=false;
+      S.cd=false; S.ts=randTimer(); S.ta=false;
       document.getElementById('pwm').classList.remove('show');
       document.querySelectorAll('.tile').forEach(t=>t.classList.remove('bl'));
       resumeAll(); startTimer(); A.track('reset'); return;
@@ -951,7 +978,7 @@ function renderGrid(ms) {
   if (S.models.length > 4) {
     document.getElementById('mg-pill').classList.add('show');
   }
-  if(!S.paid&&!S.cd&&!S.ta) startTimer();
+  if(!S.paid&&!S.cd&&!S.ta) attachEngagementTrigger();
 }
 
 // ── REFRESH ────────────────────────────────────────────
