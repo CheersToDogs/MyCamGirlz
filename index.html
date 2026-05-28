@@ -305,8 +305,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .mgm-fs:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
 .mgm-close{background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;padding:0 2px;transition:color .15s}
 .mgm-close:hover{color:var(--pink)}
-.mgm-grid{display:grid;grid-template-columns:1fr;gap:6px;padding:8px;overflow-y:auto;max-height:calc(100vh - 160px);scrollbar-width:thin;scrollbar-color:var(--surface2) transparent}
-#mgm.fullscreen-mode .mgm-grid{max-height:calc(100vh - 120px)}
+.mgm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;padding:8px;overflow-y:auto;max-height:calc(100vh - 160px);scrollbar-width:thin;scrollbar-color:var(--surface2) transparent}
+#mgm.fullscreen-mode .mgm-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));max-height:calc(100vh - 120px)}
 .mg-tile{position:relative;aspect-ratio:16/9;background:var(--bg3);border-radius:var(--r);overflow:hidden;cursor:pointer;border:1px solid var(--border);transition:border-color .15s}
 .mg-tile:hover{border-color:var(--border-hot);box-shadow:0 4px 16px rgba(255,62,138,.2)}
 .mg-tile .snap{position:absolute;inset:0;background-size:cover;background-position:center}
@@ -1459,6 +1459,7 @@ function startMGTimer() {
 async function renderMG() {
   const grid = document.getElementById('mgm-grid');
   grid.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2);font-size:12px">Loading…</div>';
+  // Destroy any lingering HLS instances
   Object.values(mgHls).forEach(h => { try { h.destroy(); } catch(e){} });
   mgHls = {};
 
@@ -1471,14 +1472,11 @@ async function renderMG() {
       const r = await fetch(`https://go.stripchat.com/api/models?${p}`);
       const d = await r.json();
       pool = (d.models||d.data||[]).filter(m=>m.status==='public'&&m.stream&&m.stream.urls);
-    } catch(e) {
-      pool = S.models;
-    }
+    } catch(e) { pool = S.models; }
   }
 
   const show = pool.slice(0, 50);
   const more = Math.max(0, pool.length - show.length);
-
   document.getElementById('mgm-more-txt').textContent =
     more > 0 ? `+${more} more live right now` : `${pool.length} models live now`;
 
@@ -1487,67 +1485,34 @@ async function renderMG() {
   show.forEach(m => {
     const tile = document.createElement('div');
     tile.className = 'mg-tile';
-    const snap = document.createElement('div');
-    snap.className = 'snap';
+
+    // Pure thumbnail — no HLS, no video element
     const su = m.snapshotUrl || m.widgetPreviewUrl || '';
-    if (su) snap.style.backgroundImage = `url(${su})`;
-    tile.appendChild(snap);
-
-    const vid = document.createElement('video');
-    vid.muted = true; vid.playsInline = true; vid.autoplay = true;
-    tile.appendChild(vid);
-
-    const name = document.createElement('div');
-    name.className = 'mg-name';
-    name.textContent = m.username;
-    tile.appendChild(name);
-
-    if (m.viewersCount) {
-      const vc = document.createElement('div');
-      vc.className = 'mg-vc';
-      vc.textContent = fmt(m.viewersCount);
-      tile.appendChild(vc);
+    if (su) {
+      const img = document.createElement('img');
+      img.src = su;
+      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit';
+      img.loading = 'lazy';
+      tile.appendChild(img);
     }
 
     // LIVE badge
     const lb = document.createElement('div');
-    lb.style.cssText = 'position:absolute;top:8px;left:8px;background:var(--pink);color:#fff;font-family:var(--font-d);font-size:9px;font-weight:900;padding:2px 7px;border-radius:100px;letter-spacing:.8px;text-transform:uppercase;box-shadow:0 0 8px rgba(255,62,138,.5)';
+    lb.style.cssText = 'position:absolute;top:7px;left:7px;background:var(--pink);color:#fff;font-family:var(--font-d);font-size:9px;font-weight:900;padding:2px 7px;border-radius:100px;letter-spacing:.8px';
     lb.textContent = 'LIVE';
     tile.appendChild(lb);
 
-    // Go Private CTA on hover
-    const cta = document.createElement('a');
-    cta.style.cssText = 'position:absolute;bottom:40px;left:50%;transform:translateX(-50%) translateY(8px);background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:12px;font-weight:800;padding:8px 20px;border-radius:100px;text-decoration:none;opacity:0;transition:all .2s;box-shadow:0 4px 16px rgba(255,62,138,.4);white-space:nowrap;pointer-events:none';
-    cta.textContent = '🔒 Go Private';
-    cta.href = aurl(m.username);
-    cta.target = '_blank';
-    cta.rel = 'noopener';
-    tile.appendChild(cta);
-    tile.addEventListener('mouseenter', () => { cta.style.opacity='1'; cta.style.transform='translateX(-50%) translateY(0)'; cta.style.pointerEvents='auto'; });
-    tile.addEventListener('mouseleave', () => { cta.style.opacity='0'; cta.style.transform='translateX(-50%) translateY(8px)'; cta.style.pointerEvents='none'; });
+    // Name + viewer count overlay
+    const info = document.createElement('div');
+    info.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.8),transparent);padding:22px 8px 6px;';
+    info.innerHTML = `<div style="font-family:var(--font-d);font-size:12px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.username}</div>${m.viewersCount?`<div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:1px">👁 ${fmt(m.viewersCount)}</div>`:''}`;
+    tile.appendChild(info);
 
-    tile.addEventListener('click', () => {
-      closeMG();
-      openPV(m);
-    });
-
+    tile.addEventListener('click', () => { closeMG(); openPV(m); });
     grid.appendChild(tile);
-
-    // Only load HLS for first 9 (visible) — rest are snapshots to save bandwidth
-    const url = getUrl(m);
-    const mgFS = document.getElementById('mgm').classList.contains('fullscreen-mode');
-    if (url && Hls.isSupported() && show.indexOf(m) < (mgFS ? 18 : 12)) {
-      const h = new Hls({ strictManifestParsing: false, maxBufferLength: 5 });
-      h.loadSource(url);
-      h.attachMedia(vid);
-      h.on(Hls.Events.MANIFEST_PARSED, () => {
-        vid.play().catch(() => {});
-        snap.style.opacity = '0';
-      });
-      mgHls[m.username] = h;
-    }
   });
 }
+
 
 // ══════════════════════════════════════
 // TIMER: hold expired state until manual reset
