@@ -261,8 +261,6 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 
 
 /* DEBUG RESET PILL */
-#debug-pill{position:fixed;bottom:16px;right:16px;z-index:9999;background:#1a1a2e;border:1px solid #ff3e8a;border-radius:var(--rp);padding:6px 14px;font-family:var(--font);font-size:11px;font-weight:700;color:#ff3e8a;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 12px rgba(255,62,138,.3);transition:all .15s;max-width:calc(100vw - 32px)}
-#debug-pill:hover{background:rgba(255,62,138,.15);box-shadow:0 4px 18px rgba(255,62,138,.5)}
 
 /* EMAIL UNLOCK BANNER */
 #email-unlock{display:none;background:linear-gradient(135deg,rgba(255,62,138,.12),rgba(123,47,255,.12));border:1px solid rgba(255,62,138,.3);border-radius:var(--r);padding:18px 20px;margin:10px 14px 0;text-align:center}
@@ -547,7 +545,6 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 </div>
 
 <!-- DEBUG RESET PILL — remove before launch -->
-<div id="debug-pill" onclick="debugReset()" title="Reset timer + session for debugging">🔄 Reset Timer</div>
 
 <script>
 'use strict';
@@ -1290,30 +1287,6 @@ function scrollToTile(tile) {
 
 
 // ── DEBUG — remove before launch ──────────────────────
-function debugReset() {
-  // Clear all session/timer state
-  localStorage.removeItem('mcg_s');
-  localStorage.removeItem('mcg_age');
-  document.cookie = 'mcg_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-  document.cookie = 'mcgfp=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-  // Reset state
-  S.ta = false;
-  S.ts = V.free_minutes * 60;
-  S.cd = false;
-  S.cds = 0;
-  S.paid = false;
-  S.user = null;
-  // Clear UI
-  clearInterval(tiv);
-  document.getElementById('pwm').classList.remove('show');
-  document.querySelectorAll('.tile').forEach(t => t.classList.remove('bl'));
-  document.getElementById('tpill').className = '';
-  document.getElementById('ttxt').textContent = 'FREE';
-  document.getElementById('tdot').style.background = '#6fe87a';
-  document.getElementById('cdl').style.display = 'none';
-  // Reload fresh
-  location.reload();
-}
 
 // ══════════════════════════════════════
 // CATEGORY PILL COUNTS
