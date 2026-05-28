@@ -1,11 +1,36 @@
 # MyCamGirlz — Project Master Doc
-**Last Updated:** 2026-04-08
-**Commit:** 93e0230
+**Last Updated:** 2026-05-27
 **Live URL:** https://mycamgirlz.com + https://mycamgirlz.pages.dev
 **Repo:** https://github.com/CheersToDogs/MyCamGirlz (PUBLIC — never commit secrets)
 **Deploy:** git push origin main → Cloudflare Pages auto-deploys (~60s)
-**Auth API:** ubuntu@98.95.155.84, port 8767, systemd service `mcg-auth`
-**Pages Function proxy:** /functions/api/auth.js → proxies /api/* to AWS:8767
+**Auth API:** designed but **NOT deployed** (see State of Reality below)
+**Pages Function proxy:** `functions/api/[[path]].js` → proxies `/api/*` to AWS:8767 (origin currently absent)
+
+---
+
+## STATE OF REALITY (2026-05-27 audit)
+
+Earlier notes described the auth backend as if it were deployed. **It is not.** Verified this session by SSH to `ubuntu@98.95.155.84`:
+
+**REAL on production:**
+- Frontend `index.html` is live, deployed, and serving correctly at https://mycamgirlz.com (HTTP 200)
+- Cloudflare Pages Function `functions/api/[[path]].js` IS deployed — `/api/auth/me` returns 403 with proper CORS headers, confirming the catch-all proxy is wired
+- Domain, DNS, TLS all working
+- All UI for age gate, signup, login, magic link flows is in `index.html`
+
+**NOT real (designed but never built):**
+- `/home/ubuntu/mcg` working copy — does not exist on AWS
+- `mcg-auth.service` systemd unit — does not exist in `/etc/systemd/system/`
+- Nothing listening on port `8767` (verified via `ss -tlnp`)
+- UFW rule for 8767 — never added
+- FastAPI `auth_api.py`, SQLite `auth.db` — never created
+- Resend API key, JWT_SECRET env file — never set
+
+**Implication:** Every reference in docs to "auth backend running on AWS" is forward-looking design, not current state. Until the FastAPI service is actually stood up, any signup/login attempt on the live site will fail at the proxy → origin hop.
+
+**Predecessor project (still on AWS):** `/mnt/data150/home/ubuntu/projects/livegrid/` — repo `github.com/CheersToDogs/LiveGrid`, live at `livegrid.pages.dev`. Earlier/simpler version of the same concept (Stripchat HLS multigrid, single `index.html`, no auth tier). MyCamGirlz appears to be the rebrand+evolution. Includes a closed WebRTC investigation (2026-03-20): Stripchat's WebRTC endpoints require authenticated session, dead-end for unauthed access.
+
+**REVENUE LEAK (active):** `const AFF = {id:'',campaign:'mycamgirlz'};` at line 631 of `index.html` — affiliate ID is empty. Every click to a model room currently goes to bare `stripchat.com/<username>` with no tracking. **Zero affiliate credit on all traffic until Ken signs up for Stripcash and populates `AFF.id`.**
 
 ---
 

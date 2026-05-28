@@ -4,11 +4,15 @@
 
 ## Session Start (every chat)
 
-1. Read `PROJECT.md` from repo — confirms current state
+1. Read `PROJECT.md` from repo — confirms current state, **especially the STATE OF REALITY section**
 2. `git log --oneline -3` — confirms what's deployed
 3. `curl -s https://mycamgirlz.com | head -5` — confirm live site is current
-4. `curl -s http://127.0.0.1:8767/health` on AWS — confirm auth API is up
+4. `curl -s http://127.0.0.1:8767/health` on AWS — **EXPECTED TO FAIL until auth backend is deployed** (see PROJECT.md State of Reality, 2026-05-27). Treat failure as confirmation of current state, not as a regression.
 5. Check `KNOWN ISSUES` section of PROJECT.md before touching anything
+
+## Reality-Check Rule
+
+Before claiming any component "is deployed" or "is running," **verify on the actual server** (SSH for AWS services, curl for HTTP endpoints, `systemctl status` for systemd units). Past docs have described designed-but-undeployed components as if they were live. When in doubt, run the check before writing the claim.
 
 ---
 
