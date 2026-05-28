@@ -63,7 +63,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 #ti::placeholder{color:var(--text3)}
 #ti:focus{border-color:var(--pink);width:165px}
 #tico{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3);pointer-events:none}
-#tpill{margin-left:auto;display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rp);padding:5px 13px;font-family:var(--font);font-size:11px;font-weight:600;color:var(--text2);transition:all .3s;white-space:nowrap;flex-shrink:0}
+#tpill{position:fixed;top:11px;right:16px;z-index:100;display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rp);padding:5px 13px;font-family:var(--font);font-size:11px;font-weight:600;color:var(--text2);transition:all .3s;white-space:nowrap;pointer-events:none}
 #tpill.warn{border-color:#ff9800;color:#ff9800}
 #tpill.crit{border-color:var(--pink);color:var(--pink);box-shadow:0 0 10px var(--pink-glow);animation:tp 1s infinite}
 #tpill.paid{border-color:rgba(100,220,100,.4);color:#6fe87a}
@@ -386,8 +386,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <button id="login-btn">Sign In</button>
   <div id="user-pill"><span id="user-email-short"></span><span style="font-size:9px;margin-left:2px">▾</span></div>
   <span id="lcnt"></span>
-  <div id="tpill"><div id="tdot"></div><span id="ttxt">FREE</span></div>
 </div>
+<div id="tpill"><div id="tdot"></div><span id="ttxt">FREE</span></div>
 
 <!-- CAT BAR -->
 <div id="cbar">
