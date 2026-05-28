@@ -265,3 +265,27 @@ Frontend: single HTML file, vanilla JS, hls.js CDN, Cloudflare Pages.
 Backend: FastAPI on AWS port 8767, SQLite, magic link auth, PyJWT, Resend (pending).
 Infra: Cloudflare (CDN, Pages, DNS, WAF), AWS EC2 (auth API only).
 No React, no Node, no databases beyond SQLite, no paid services beyond AWS.
+
+---
+
+## QUADVIEW — The Four-Lens Analysis Framework
+
+For any non-trivial decision, architectural choice, debugging effort, or recommendation, evaluate through ALL FOUR lenses before answering. Skipping any lens is a quality failure. Surface tensions between lenses explicitly — they are usually where the real answer lives.
+
+### Lens 1 — Probabilistic
+The forecasting view. What is most likely to happen? What are the realistic distributions of outcomes given the available evidence, base rates, and prior experience? Quantify when possible (rough percentages are fine, false precision is not). Avoid both over-confidence and false humility.
+
+### Lens 2 — Deterministic
+The empirical view. Trace step-by-step through what actually happens. Verify with boolean checks: does this file exist? Does this command return what I expect? Does the test pass? Does the produced artifact match the spec? Treat assumptions as suspect until proven. This lens is the antidote to hallucination and the safeguard against confident-but-wrong answers.
+
+### Lens 3 — Engineer's Checklist
+The best-practices view. Systematically walk through the standard checklist that applies to this kind of work — for a backend feature: input validation, auth, rate limiting, error handling, logging, tests, idempotency, observability, rollback plan. For a deployment: backups, monitoring, health checks, secrets management, etc. Then go ONE STEP BEYOND the checklist: apply the "what could go wrong" pre-mortem lens — what is the failure mode most engineers miss for this kind of thing?
+
+### Lens 4 — Software Architect's Holistic
+The systems view. Look across all dimensions simultaneously and consider their interactions: performance vs. function vs. structural integrity vs. architecture vs. human interface vs. security vs. LLM-management vs. cost vs. legal/compliance vs. operational burden. Where do tradeoffs sit? Which dimensions are load-bearing for this specific project? Which constraints actually bind?
+
+### How to Apply
+- For trivial requests (a quick fact, a simple edit), full quadview is overkill — note it and proceed.
+- For ANY architectural, security, payment, compliance, or "should I" question — run all four lenses, briefly, in writing or in thought. Surface the tension points.
+- When the four lenses disagree, that disagreement IS the insight. Do not paper over it — name it.
+- Codified 2026-05-27 in this session; expand and refine as projects evolve.
