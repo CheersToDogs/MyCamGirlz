@@ -261,7 +261,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 
 
 /* DEBUG RESET PILL */
-#debug-pill{position:fixed;bottom:50px;right:16px;z-index:9998;background:#1a1a2e;border:1px solid #ff3e8a;border-radius:var(--rp);padding:6px 14px;font-family:var(--font);font-size:11px;font-weight:700;color:#ff3e8a;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 12px rgba(255,62,138,.3);transition:all .15s}
+#debug-pill{position:fixed;bottom:16px;right:16px;z-index:9999;background:#1a1a2e;border:1px solid #ff3e8a;border-radius:var(--rp);padding:6px 14px;font-family:var(--font);font-size:11px;font-weight:700;color:#ff3e8a;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 12px rgba(255,62,138,.3);transition:all .15s;max-width:calc(100vw - 32px)}
 #debug-pill:hover{background:rgba(255,62,138,.15);box-shadow:0 4px 18px rgba(255,62,138,.5)}
 
 /* EMAIL UNLOCK BANNER */
@@ -283,7 +283,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .eu-msg.err{color:var(--pink)}
 
 /* MICRO-GRID TRIGGER PILL */
-#mg-pill{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);z-index:400;background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:12px;font-weight:800;padding:8px 20px;border-radius:var(--rp);cursor:pointer;box-shadow:0 4px 20px rgba(255,62,138,.5);transition:all .2s;border:none;white-space:nowrap;display:none}
+#mg-pill{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:400;background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:12px;font-weight:800;padding:8px 20px;border-radius:var(--rp);cursor:pointer;box-shadow:0 4px 20px rgba(255,62,138,.5);transition:all .2s;border:none;white-space:nowrap;display:none}
 #mg-pill.show{display:block}
 #mg-pill:hover{box-shadow:0 6px 28px rgba(255,62,138,.7);transform:translateX(-50%) translateY(-2px)}
 
