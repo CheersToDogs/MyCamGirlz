@@ -5,7 +5,7 @@
  * Adds CORS, strips internal headers
  */
 
-const UPSTREAM = 'http://98.95.155.84:8767';
+const UPSTREAM = 'http://98.95.155.84:8880';
 const ALLOWED  = ['https://mycamgirlz.com', 'https://www.mycamgirlz.com'];
 
 export async function onRequest(context) {
