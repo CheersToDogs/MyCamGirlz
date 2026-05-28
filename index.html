@@ -70,6 +70,15 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 #tpill-halo.crit{background:rgba(255,62,138,.14);box-shadow:0 0 18px rgba(255,62,138,.35)}
 #tpill-halo.paid{background:rgba(111,232,122,.1);box-shadow:0 0 14px rgba(111,232,122,.2)}
 #tpill{position:relative;display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rp);padding:5px 13px;font-family:var(--font);font-size:11px;font-weight:600;color:var(--text2);transition:all .3s;white-space:nowrap;pointer-events:none}
+#sp-wrap{position:fixed;bottom:16px;left:16px;z-index:100;display:none;pointer-events:none}
+#sp-halo{position:absolute;inset:-6px;border-radius:calc(var(--rp) + 6px);background:rgba(255,255,255,.06);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background .4s,box-shadow .4s}
+#sp-halo.warn{background:rgba(255,152,0,.12);box-shadow:0 0 14px rgba(255,152,0,.25)}
+#sp-halo.crit{background:rgba(255,62,138,.14);box-shadow:0 0 18px rgba(255,62,138,.35)}
+#sp-pill{position:relative;display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rp);padding:5px 13px;font-family:var(--font);font-size:11px;font-weight:600;color:var(--text2);transition:all .3s;white-space:nowrap}
+#sp-pill.warn{border-color:#ff9800;color:#ff9800}
+#sp-pill.crit{border-color:var(--pink);color:var(--pink);box-shadow:0 0 10px var(--pink-glow);animation:tp 1s infinite}
+#spdot{width:7px;height:7px;border-radius:50%;background:var(--pink);flex-shrink:0;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 #tpill.warn{border-color:#ff9800;color:#ff9800}
 #tpill.crit{border-color:var(--pink);color:var(--pink);box-shadow:0 0 10px var(--pink-glow);animation:tp 1s infinite}
 #tpill.paid{border-color:rgba(100,220,100,.4);color:#6fe87a}
@@ -394,6 +403,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <span id="lcnt"></span>
 </div>
 <div id="tpill-wrap"><div id="tpill-halo"></div><div id="tpill"><div id="tdot"></div><span id="ttxt">FREE</span></div></div>
+<div id="sp-wrap"><div id="sp-halo"></div><div id="sp-pill"><div id="spdot"></div><span id="sptxt"></span></div></div>
 
 <!-- CAT BAR -->
 <div id="cbar">
@@ -685,7 +695,7 @@ const S = {
   // timer state
   ta:false, ts:0, cd:false, cds:0,
   // grid state
-  n:2, models:[], hls:{}, at:null, paused:false,
+  n:3, models:[], hls:{}, at:null, paused:false,
   f:{gender:'female',sort:'viewersCount',country:'',tag:'',age:'',body:'',ethnicity:''},
   ws:{}, t0:Date.now(),
   // favorites
@@ -761,6 +771,79 @@ function renderT() {
   if(S.ts<=10){pill.className='crit';halo.className='crit';}
   else if(S.ts<=30){pill.className='warn';halo.className='warn';}
   else{pill.className='';halo.className='';}
+}
+
+// ── SCROLL PREVIEW COUNTER ────────────────────────────
+// Fires when anon user scrolls to row 4 (tile index 9).
+// IntersectionObserver root = #gw (the scrolling container).
+// Separate pill from main timer — counts 45s then shows paywall.
+let spTiv = null, spSecs = 0, spObs = null;
+
+function initScrollPreview() {
+  if (S.paid || S.user) return;
+  if (spObs) { spObs.disconnect(); spObs = null; }
+  const tiles = document.querySelectorAll('#grid .tile');
+  const trigger = tiles[9]; // 4th row, 1st col
+  if (!trigger) return;
+  const root = document.getElementById('gw');
+  spObs = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      startScrollPreview();
+      spObs.disconnect();
+      spObs = null;
+    }
+  }, { root, threshold: 0.25 });
+  spObs.observe(trigger);
+}
+
+function startScrollPreview() {
+  if (spTiv || S.paid || S.user) return;
+  spSecs = 45;
+  document.getElementById('sp-wrap').style.display = 'block';
+  renderSP();
+  spTiv = setInterval(() => {
+    if (S.paid || S.user) { clearInterval(spTiv); spTiv = null; document.getElementById('sp-wrap').style.display='none'; return; }
+    if (spSecs <= 0) {
+      clearInterval(spTiv); spTiv = null;
+      document.getElementById('sp-wrap').style.display = 'none';
+      showPW('scroll_preview');
+      A.track('scroll_preview_expire');
+      return;
+    }
+    spSecs--;
+    renderSP();
+  }, 1000);
+}
+
+function renderSP() {
+  const pill = document.getElementById('sp-pill');
+  const halo = document.getElementById('sp-halo');
+  const txt  = document.getElementById('sptxt');
+  const m = Math.floor(spSecs/60), s = spSecs%60;
+  txt.textContent = `Preview ending: ${m}:${String(s).padStart(2,'0')}`;
+  if (spSecs <= 10) { pill.className='crit'; halo.className='crit'; }
+  else if (spSecs <= 20) { pill.className='warn'; halo.className='warn'; }
+  else { pill.className=''; halo.className=''; }
+}
+
+// ── ANON STREAM ROTATION ──────────────────────────────
+// Randomly swap 15 streams every 60–90s — variable interval schedule.
+// Each rotation resets visual novelty and re-arms the scroll observer.
+let rotTiv = null;
+function startAnonRotation() {
+  if (S.paid || S.user || rotTiv) return;
+  function scheduleNext() {
+    const delay = 60000 + Math.floor(Math.random() * 30000); // 60–90s
+    rotTiv = setTimeout(() => {
+      if (S.paid || S.user || S.paused) { rotTiv = null; return; }
+      if (S.models.length >= 15) {
+        const shuffled = [...S.models].sort(() => Math.random() - 0.5);
+        renderGrid(shuffled.slice(0, 15));
+      }
+      scheduleNext();
+    }, delay);
+  }
+  scheduleNext();
 }
 
 // ── TIMER PILL DRAG ────────────────────────────────────
@@ -962,9 +1045,11 @@ function renderGrid(ms) {
   g.style.gridTemplateColumns=`repeat(${S.n},1fr)`;
   ms.forEach(m=>g.appendChild(makeTile(m)));
 
-  // Anon: 4 blurred placeholder tiles in grid (look like locked video players)
+  // Anon: 3x5 live preview grid — no locked tiles, scroll triggers secondary counter
   if (!S.user && !S.paid) {
-    for (let i = 0; i < 4; i++) g.appendChild(makeLockedTile(i));
+    g.style.gridTemplateColumns = 'repeat(3,1fr)'; // force 3 cols regardless of S.n
+    initScrollPreview();
+    startAnonRotation();
   } else if (S.user && !S.paid) {
     // Free: show paid upsell tiles if grid has gaps
     const needed = (S.n * S.n) - ms.length;
@@ -1129,13 +1214,13 @@ function onLogin(user) {
 function gridLimit() {
   if (S.paid) return 36;
   if (S.user) return 8;   // free account
-  return 4;               // anonymous
+  return 15;              // anonymous: 3x5 preview grid
 }
 
 function maxGridN() {
   if (S.paid) return 6;
   if (S.user) return 3;   // free: up to 3x3 but shows signup tiles after 8
-  return 2;               // anon: 2x2 hard cap
+  return 3;               // anon: 3-col preview grid
 }
 
 // ══════════════════════════════════════
