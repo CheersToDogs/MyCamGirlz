@@ -63,7 +63,13 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 #ti::placeholder{color:var(--text3)}
 #ti:focus{border-color:var(--pink);width:165px}
 #tico{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3);pointer-events:none}
-#tpill{position:fixed;top:11px;right:16px;z-index:100;display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rp);padding:5px 13px;font-family:var(--font);font-size:11px;font-weight:600;color:var(--text2);transition:all .3s;white-space:nowrap;pointer-events:none}
+#tpill-wrap{position:fixed;top:8px;right:16px;z-index:100;cursor:grab;user-select:none;touch-action:none}
+#tpill-wrap:active{cursor:grabbing}
+#tpill-halo{position:absolute;inset:-6px;border-radius:calc(var(--rp) + 6px);background:rgba(255,255,255,.06);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background .4s,box-shadow .4s;pointer-events:none}
+#tpill-halo.warn{background:rgba(255,152,0,.12);box-shadow:0 0 14px rgba(255,152,0,.25)}
+#tpill-halo.crit{background:rgba(255,62,138,.14);box-shadow:0 0 18px rgba(255,62,138,.35)}
+#tpill-halo.paid{background:rgba(111,232,122,.1);box-shadow:0 0 14px rgba(111,232,122,.2)}
+#tpill{position:relative;display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rp);padding:5px 13px;font-family:var(--font);font-size:11px;font-weight:600;color:var(--text2);transition:all .3s;white-space:nowrap;pointer-events:none}
 #tpill.warn{border-color:#ff9800;color:#ff9800}
 #tpill.crit{border-color:var(--pink);color:var(--pink);box-shadow:0 0 10px var(--pink-glow);animation:tp 1s infinite}
 #tpill.paid{border-color:rgba(100,220,100,.4);color:#6fe87a}
@@ -387,7 +393,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <div id="user-pill"><span id="user-email-short"></span><span style="font-size:9px;margin-left:2px">▾</span></div>
   <span id="lcnt"></span>
 </div>
-<div id="tpill"><div id="tdot"></div><span id="ttxt">FREE</span></div>
+<div id="tpill-wrap"><div id="tpill-halo"></div><div id="tpill"><div id="tdot"></div><span id="ttxt">FREE</span></div></div>
 
 <!-- CAT BAR -->
 <div id="cbar">
@@ -721,14 +727,42 @@ function startTimer() {
 function tickT() { if (S.ts<=0){clearInterval(tiv);expireT();return} S.ts--; renderT(); }
 
 function renderT() {
-  const pill=document.getElementById('tpill'),dot=document.getElementById('tdot'),txt=document.getElementById('ttxt');
-  if (S.paid){pill.className='paid';dot.style.background='#6fe87a';txt.textContent='∞ Unlimited';return}
+  const pill=document.getElementById('tpill'),dot=document.getElementById('tdot'),txt=document.getElementById('ttxt'),halo=document.getElementById('tpill-halo');
+  if (S.paid){pill.className='paid';halo.className='paid';dot.style.background='#6fe87a';txt.textContent='∞ Unlimited';return}
   const m=Math.floor(S.ts/60),s=S.ts%60;
   txt.textContent=`${m}:${String(s).padStart(2,'0')} free`;
-  if(S.ts<=10) pill.className='crit';
-  else if(S.ts<=30) pill.className='warn';
-  else pill.className='';
+  if(S.ts<=10){pill.className='crit';halo.className='crit';}
+  else if(S.ts<=30){pill.className='warn';halo.className='warn';}
+  else{pill.className='';halo.className='';}
 }
+
+// ── TIMER PILL DRAG ────────────────────────────────────
+(function(){
+  const wrap = document.getElementById('tpill-wrap');
+  let dragging=false, ox=0, oy=0, sx=0, sy=0;
+  function startDrag(cx,cy){
+    dragging=true;
+    const r=wrap.getBoundingClientRect();
+    ox=cx-r.left; oy=cy-r.top;
+    sx=r.left; sy=r.top;
+    wrap.style.right='auto'; wrap.style.top=sy+'px'; wrap.style.left=sx+'px';
+    wrap.style.cursor='grabbing';
+  }
+  function moveDrag(cx,cy){
+    if(!dragging) return;
+    let nx=cx-ox, ny=cy-oy;
+    const mw=window.innerWidth-wrap.offsetWidth-4, mh=window.innerHeight-wrap.offsetHeight-4;
+    nx=Math.max(4,Math.min(nx,mw)); ny=Math.max(4,Math.min(ny,mh));
+    wrap.style.left=nx+'px'; wrap.style.top=ny+'px';
+  }
+  function endDrag(){dragging=false;wrap.style.cursor='grab';}
+  wrap.addEventListener('mousedown',e=>{e.preventDefault();startDrag(e.clientX,e.clientY);});
+  document.addEventListener('mousemove',e=>{moveDrag(e.clientX,e.clientY);});
+  document.addEventListener('mouseup',endDrag);
+  wrap.addEventListener('touchstart',e=>{const t=e.touches[0];startDrag(t.clientX,t.clientY);},{passive:true});
+  document.addEventListener('touchmove',e=>{if(dragging){e.preventDefault();const t=e.touches[0];moveDrag(t.clientX,t.clientY);}},{passive:false});
+  document.addEventListener('touchend',endDrag);
+})();
 
 function expireT() {
   // Hold blurred state — do NOT auto-start cooldown
