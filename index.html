@@ -36,6 +36,16 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .ag-no:hover{border-color:var(--text2);color:var(--text)}
 .ag-legal{font-size:11px;color:var(--text3);margin-top:20px;line-height:1.6}
 .ag-legal a{color:var(--text2);text-decoration:underline}
+.ag-state-notice{font-size:10px;color:var(--text3);margin-top:14px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;line-height:1.6}
+.ag-state-icon{margin-right:4px}
+.ag-vpn-row{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}
+.ag-vpn-label{font-size:10px;color:var(--text3);white-space:nowrap}
+.ag-vpn-badge{font-size:10px;font-weight:400;padding:3px 8px;border-radius:4px;text-decoration:none;transition:opacity .15s;white-space:nowrap}
+.ag-vpn-badge:hover{opacity:.8}
+.ag-vpn-badge strong{font-weight:700}
+.ag-vpn-nord{background:#4687ff;color:#fff}
+.ag-vpn-express{background:#da3940;color:#fff}
+.ag-vpn-surf{background:#00c7b7;color:#fff}
 
 /* HEADER */
 #hdr{position:relative;z-index:20;height:54px;background:rgba(14,9,18,.94);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0}
@@ -342,6 +352,16 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     <button class="ag-yes" id="ag-enter">I am 18 or older — Enter</button>
     <a href="https://google.com" class="ag-no">I am under 18 — Exit</a>
     <div class="ag-legal">By entering you confirm you are 18+ and agree to our <a href="#" onclick="showLegal('tos');return false">Terms of Service</a> and <a href="#" onclick="showLegal('privacy');return false">Privacy Policy</a>. All models are 18+ and have consented to appear on this site.</div>
+    <div class="ag-state-notice">
+      <span class="ag-state-icon">🚫</span>
+      We do not currently serve residents of AL, AR, AZ, FL, GA, ID, IN, KS, KY, LA, MS, MT, NC, ND, NE, OH, OK, SC, SD, TN, TX, UT, VA, or WY due to local age verification laws.
+      <div class="ag-vpn-row">
+        <span class="ag-vpn-label">Access privately via VPN:</span>
+        <a href="https://nordvpn.com/" target="_blank" rel="noopener" class="ag-vpn-badge ag-vpn-nord">Nord<strong>VPN</strong></a>
+        <a href="https://www.expressvpn.com/" target="_blank" rel="noopener" class="ag-vpn-badge ag-vpn-express">Express<strong>VPN</strong></a>
+        <a href="https://surfshark.com/" target="_blank" rel="noopener" class="ag-vpn-badge ag-vpn-surf">Surf<strong>shark</strong></a>
+      </div>
+    </div>
   </div>
 </div>
 
