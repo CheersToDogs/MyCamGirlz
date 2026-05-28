@@ -13,6 +13,13 @@ export async function onRequest(context) {
   const url    = new URL(request.url);
   const origin = request.headers.get('Origin') || '';
 
+  // Debug: confirm function is running
+  if (url.pathname === '/api/_ping') {
+    return new Response(JSON.stringify({pong:true, ts:Date.now()}), {
+      headers: {'Content-Type':'application/json'}
+    });
+  }
+
   // CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, {
