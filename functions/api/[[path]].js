@@ -20,6 +20,21 @@ export async function onRequest(context) {
     });
   }
 
+  // Debug: test upstream connectivity
+  if (url.pathname === '/api/_upstream_test') {
+    try {
+      const r = await fetch('http://98.95.155.84:8880/health', {method:'GET'});
+      const body = await r.text();
+      return new Response(JSON.stringify({status:r.status, body}), {
+        headers: {'Content-Type':'application/json'}
+      });
+    } catch(e) {
+      return new Response(JSON.stringify({error:e.message, type:e.constructor.name}), {
+        status:500, headers: {'Content-Type':'application/json'}
+      });
+    }
+  }
+
   // CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, {
