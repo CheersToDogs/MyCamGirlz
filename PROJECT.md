@@ -1,253 +1,160 @@
-# MyCamGirlz — Project Master Doc
-**Last Updated:** 2026-05-27
-**Live URL:** https://mycamgirlz.com + https://mycamgirlz.pages.dev
+# MyCamGirlz — Project State
+**Last Updated:** 2026-05-29
+**Live URL:** https://mycamgirlz.com
 **Repo:** https://github.com/CheersToDogs/MyCamGirlz (PUBLIC — never commit secrets)
 **Deploy:** git push origin main → Cloudflare Pages auto-deploys (~60s)
-**Auth API:** designed but **NOT deployed** (see State of Reality below)
-**Pages Function proxy:** `functions/api/[[path]].js` → proxies `/api/*` to AWS:8767 (origin currently absent)
+**Auth API:** LIVE at https://auth.mycamgirlz.com → proxied via /api/*
 
 ---
 
-## STATE OF REALITY (2026-05-27 audit)
+## SESSION START PROTOCOL
 
-Earlier notes described the auth backend as if it were deployed. **It is not.** Verified this session by SSH to `ubuntu@98.95.155.84`:
-
-**REAL on production:**
-- Frontend `index.html` is live, deployed, and serving correctly at https://mycamgirlz.com (HTTP 200)
-- Cloudflare Pages Function `functions/api/[[path]].js` IS deployed — `/api/auth/me` returns 403 with proper CORS headers, confirming the catch-all proxy is wired
-- Domain, DNS, TLS all working
-- All UI for age gate, signup, login, magic link flows is in `index.html`
-
-**NOT real (designed but never built):**
-- `/home/ubuntu/mcg` working copy — does not exist on AWS
-- `mcg-auth.service` systemd unit — does not exist in `/etc/systemd/system/`
-- Nothing listening on port `8767` (verified via `ss -tlnp`)
-- UFW rule for 8767 — never added
-- FastAPI `auth_api.py`, SQLite `auth.db` — never created
-- Resend API key, JWT_SECRET env file — never set
-
-**Implication:** Every reference in docs to "auth backend running on AWS" is forward-looking design, not current state. Until the FastAPI service is actually stood up, any signup/login attempt on the live site will fail at the proxy → origin hop.
-
-**Predecessor project (still on AWS):** `/mnt/data150/home/ubuntu/projects/livegrid/` — repo `github.com/CheersToDogs/LiveGrid`, live at `livegrid.pages.dev`. Earlier/simpler version of the same concept (Stripchat HLS multigrid, single `index.html`, no auth tier). MyCamGirlz appears to be the rebrand+evolution. Includes a closed WebRTC investigation (2026-03-20): Stripchat's WebRTC endpoints require authenticated session, dead-end for unauthed access.
-
-**REVENUE LEAK (active):** `const AFF = {id:'',campaign:'mycamgirlz'};` at line 631 of `index.html` — affiliate ID is empty. Every click to a model room currently goes to bare `stripchat.com/<username>` with no tracking. **Zero affiliate credit on all traffic until Ken signs up for Stripcash and populates `AFF.id`.**
+1. Read PROJECT.md from repo
+2. `git log --oneline -3` on working copy
+3. `curl -s https://mycamgirlz.com/api/auth/me` — must return JSON not HTML
+4. `curl -s http://127.0.0.1:8880/health` on AWS — must return `{"ok":true}`
 
 ---
 
-## What It Is
-Multi-stream live cam grid viewer. CamSoda-inspired UI. Stripchat affiliate revenue + $9.99/mo subscriptions.
-Single static `index.html` + Cloudflare Pages Function for API proxy.
-No build step, no npm, no framework — vanilla JS + hls.js from CDN.
+## CURRENT STATE (2026-05-29)
+
+### What's live and working
+- Frontend `index.html` serving at mycamgirlz.com (HTTP 200)
+- Cloudflare Pages Function `functions/api/[[path]].js` proxies `/api/*` → `https://auth.mycamgirlz.com`
+- Auth backend: FastAPI on AWS port 8880, nginx HTTPS on port 443, Let's Encrypt cert (expires 2026-08-26)
+- Magic link auth working end-to-end via AWS SES (sends from noreply@banemedia.com)
+- Password login for paid users (PBKDF2-HMAC-SHA256)
+- `/api/health` → `{"ok":true}` ✓
+- `/api/auth/me` → `{"detail":"Not authenticated"}` ✓
+- Geo-blocking: 24 states with active AV laws → HTTP 451 (functions/_middleware.js)
+- Age gate with VPN badges (NordVPN/ExpressVPN/Surfshark — placeholder URLs, not yet affiliate)
+
+### Conversion mechanics implemented
+- Anon sees 3×5 live grid (15 HLS streams)
+- Audio gated behind email capture — clicking 🔇 shows email modal
+- Timer: engagement-triggered (not page load), randomized 90–180s, loss framing "X:XX left"
+- Scroll past row 3 → secondary 45s counter (bottom-left pill) → paywall
+- 60–90s random stream rotation (variable interval schedule)
+- On timer expiry: videos pause, snapshots visible, active audio stream continues
+- Paywall: semi-transparent (72% opacity, 3px blur) — streams visible behind it
+- Paywall copy: loss framing + live social proof count
+- Micro-commitment tracking: tile clicks/audio gate attempts → escalate at 3 and 5 interactions
+- Return visitor: models lightly shuffled, 1-in-5 visits gets 25% bonus timer
+
+### Access tiers
+| Tier | Streams | Grid | Features | Price |
+|---|---|---|---|---|
+| Anonymous | 15 (3×5 preview) | 3-col forced | Thumbnails on locked tiles | Free |
+| Free account | 8 | Up to 3×3 | Audio, favorites, filters | Free + email |
+| Paid | 36 | Up to 6×6 | Everything, no timer | $9.99/mo |
 
 ---
 
-## Repository Structure
+## BUSINESS STATUS
+
+| Item | Status |
+|---|---|
+| Wyoming LLC | ✅ Formed (Northwest Registered Agent) |
+| EIN | ✅ Obtained |
+| Mercury bank | ⚠️ Opened but adult industry prohibited — use Paxum |
+| Paxum | ✅ Approved — primary payout account |
+| Stripcash affiliate | ⏳ Applied, pending approval |
+| CCBill merchant | ⏳ Application in progress |
+| Segpay | Backup processor (same requirements) |
+
+---
+
+## PENDING (blocked on business approvals)
+
+- `AFF.id` in index.html is empty — zero affiliate credit until Stripcash ID wired
+- `subbtn` (Keep My Access button) has placeholder CCBill URL — swap `CCBILL_URL` constant when approved
+- VPN badge URLs are placeholder — sign up for NordVPN/ExpressVPN/Surfshark affiliate programs
+- SES sends from `noreply@banemedia.com` — add `mycamgirlz.com` SES identity when DNS records added
+
+---
+
+## PENDING (no blockers — build when ready)
+
+- Rate limiting on `/auth/magic` (currently none — SES quota at risk from spam)
+- Admin endpoint to manually upgrade user tier (useful for CCBill testing)
+- PostHog analytics wired (A.ep endpoint = null, events tracked but not sent)
+- Notification watcher — background process alerts users when favorites go live
+- `POST /auth/set-password` frontend UI (backend exists, no UI yet)
+
+---
+
+## KNOWN BUGS / ISSUES
+
+- None currently active
+
+---
+
+## REPOSITORY STRUCTURE
+
 ```
 CheersToDogs/MyCamGirlz/
-├── index.html              ← entire frontend (CSS + JS + HTML, ~64KB)
-└── functions/
-    └── api/
-        └── auth.js         ← CF Pages Function — proxies /api/* to AWS:8767
+├── index.html                  ← entire frontend (~1550 lines)
+├── functions/
+│   ├── _middleware.js          ← geo-block 24 states (HTTP 451)
+│   └── api/
+│       └── [[path]].js         ← proxies /api/* → https://auth.mycamgirlz.com
+├── PROJECT.md
+├── ARCH.md
+└── RULES.md
 ```
 
 ---
 
-## Architecture
+## AWS SERVICES
 
-### Frontend (index.html)
-- **HLS:** hls.js 1.4.12 from CDN, `strictManifestParsing: false` (EXT-X-MOUFLON tag)
-- **Stripchat API:** `https://go.stripchat.com/api/models` — public, no auth
-- **Auth API calls:** `/api/auth/*` → proxied via Pages Function to AWS:8767
-- **Session:** HttpOnly JWT cookie `mcg_session`, 30-day expiry
-- **Age gate:** localStorage key `mcg_age`, visual overlay only (JS loads behind it)
-- **Analytics:** PostHog stub at `A.track()` — endpoint `A.ep` null until wired
-- **Variant config:** `const V` object at top of JS — controls free_minutes, reset_hours, price, grid limits
-
-### Backend Auth API (AWS)
-- **Location:** `/home/ubuntu/projects/mycamgirlz/auth_api.py`
-- **Port:** 8767 (bound to 0.0.0.0, UFW allows only Cloudflare IP ranges)
-- **Service:** `mcg-auth.service` (systemd, auto-restart)
-- **Env file:** `/home/ubuntu/projects/mycamgirlz/.env`
-  - `JWT_SECRET` — 256-bit random hex (already set)
-  - `RESEND_API_KEY` — placeholder, needs real key from resend.com
-  - `SITE_URL=https://mycamgirlz.com`
-  - `MCG_DB=/home/ubuntu/projects/mycamgirlz/auth.db`
-- **DB:** SQLite WAL mode, tables: users, magic_tokens, favorites, sessions
-
-### Cloudflare
-- **Pages project:** mycamgirlz (mycamgirlz.pages.dev)
-- **Custom domains:** mycamgirlz.com + www.mycamgirlz.com (both active)
-- **Domain registrar:** Cloudflare (registered 2026-04-08)
-- **Account:** Kb@banemedia.com
-- **GitHub token:** stored locally — do not commit (MyCamGirlz scope)
-
----
-
-## Access Tiers
-
-| Tier | Streams | Features | Price |
-|---|---|---|---|
-| Anonymous | 4 (2×2) + 4 signup tiles | Random, no save | Free |
-| Free account | 8 (2×2 + scroll) | Favorites, notifications | Free |
-| Paid | 36 (6×6) | Everything, no timer | $9.99/mo |
-
-**Timer system:** Free users get `V.free_minutes` (2min) then `V.reset_hours` (3hr) cooldown.
-Controlled by `VARIANT` object — change values to run A/B cohort tests (sequential, not parallel).
-
----
-
-## Features Complete
-- CamSoda-inspired dark purple/pink UI
-- Grid selector 1×1 to 6×6 (tier-gated)
-- Gender, Sort, Country, Age, Body, Ethnicity filters
-- Category pill bar (22 tags)
-- Tag text search (Enter to apply)
-- HLS playback with snapshot preload
-- Auto-refresh every 60s with progress bar
-- Pause/Play All toggle
-- Active audio tile: snaps to [0,0], pink glow, mutes all others
-- Tile hover: name, viewers, country, age, online time, tags
-- "Go Private" CTA on tile hover → affiliate link
-- Private show modal: 4 upsell options (private, spy, tip, profile)
-- Favorite button (♥) on tiles — requires free account
-- Signup upsell tiles (anonymous: 4 free-signup tiles; free: paid upsell tiles)
-- Paywall modal with countdown timer
-- Age gate (18+ confirmation, localStorage persistent)
-- Legal pages overlay: ToS, Privacy Policy, 18 U.S.C. 2257
-- Footer with legal links + support email
-- Loading state (spinner) and empty state (with "Clear Filters" button)
-- Mobile responsive (hides secondary filters on small screens)
-- Logo links to homepage
-- Magic link auth (email → single-use token → HttpOnly JWT cookie)
-- User pill in header (email, tier, sign out)
-- User menu dropdown
-- Favorites CRUD (free: 20 max, paid: 500)
-- Fullscreen + arrow key scroll (auto-unmutes focused tile)
-- Escape key closes all modals
-- Analytics event tracking stub (PostHog-ready)
-
----
-
-## Auth API Endpoints
 ```
-GET  /health                    → {"ok":true}
-POST /auth/magic                → send magic link email
-GET  /auth/verify?token=xxx     → verify token, set JWT cookie, redirect to site
-GET  /auth/me                   → current user info (requires session)
-POST /auth/logout               → revoke session, clear cookie
-GET  /favorites                 → list favorites (requires session)
-POST /favorites                 → add favorite {username, notify}
-DELETE /favorites/{username}    → remove favorite
-GET  /favorites/live            → list favorited usernames (for frontend cross-ref)
+Port 8880  — mcg-auth.service (MyCamGirlz — THIS PROJECT)
+Port 8080  — other project (api.app)
+Port 8767  — free (was planned for MCG, moved to 8880)
+Port 8766  — livegrid-api.service (separate project)
 ```
 
-**Rate limits:** 10 magic link requests/15min per IP, 3/hr per email address.
-**Security:** bcrypt tokens (SHA-256 hashed in DB), single-use, 15min expiry, no stack traces in prod.
+nginx: `auth.mycamgirlz.com` → 127.0.0.1:8880
+Certs: `/etc/letsencrypt/live/auth.mycamgirlz.com/` (auto-renew via certbot)
+DB: `/home/ubuntu/projects/mycamgirlz/mcg.db`
+Config: `/home/ubuntu/projects/mycamgirlz/config.py` (secrets — NOT in git)
+
+EC2 security group: port 8880 open to all 15 Cloudflare IP ranges, port 443 open to 0.0.0.0/0
 
 ---
 
-## Stripchat API
-**Endpoint:** `https://go.stripchat.com/api/models`
-**Params:** `limit`, `sortBy` (viewersCount|onlineTime|new), `gender`, `tag`, `country`
-**Client-side filters applied:** status=public, gender match, bodyType, ethnicity, age range
-**HLS:** `stream.urls.original` → `720p` → `480p` → `240p` (fallback chain)
-**strictManifestParsing: false** required for EXT-X-MOUFLON non-standard tag
+## KEY CONSTANTS IN index.html
+
+```js
+const V = {
+  id:'v1',
+  free_minutes:2,      // legacy — timer now randomized via randTimer()
+  reset_hours:3,
+  price:9.99,
+  modal_copy:'A',
+  max_anon_grid:2,     // unused — anon locked to 3-col via renderGrid()
+  max_free_grid:4,
+  max_paid_grid:6,
+};
+const AFF = {id:'', campaign:'mycamgirlz'};  // WIRE id WHEN STRIPCASH APPROVES
+const CCBILL_URL = 'https://ccbill.com/PLACEHOLDER';  // SWAP WHEN APPROVED
+```
 
 ---
 
-## Affiliate Config
+## STRIPCHAT API
+
+Endpoint: `https://go.stripchat.com/api/models`
+Params: `limit`, `sortBy`, `gender`, `tag`, `country`
+HLS fallback: `stream.urls.original` → `720p` → `480p` → `240p`
+`strictManifestParsing: false` required (EXT-X-MOUFLON non-standard tag)
+
+---
+
+## AFFILIATE CONFIG
+
 ```js
 const AFF = { id: '', campaign: 'mycamgirlz' };
 ```
-**Stripcash ID not yet wired** — site sends traffic for free until this is set.
-Get ID from stripcash.company → wire into `AFF.id` → push.
-
----
-
-## Variant / A/B Config
-```js
-const V = {
-  id: 'v1',
-  free_minutes: 2,      // free watch window
-  reset_hours: 3,       // cooldown before next free window
-  price: 9.99,          // displayed subscription price
-  modal_copy: 'A',      // paywall modal copy variant
-  max_anon_grid: 2,     // anonymous max grid N (2=2x2=4 tiles)
-  max_free_grid: 4,     // free account max grid N (shows 8 streams)
-  max_paid_grid: 6,     // paid max grid N (6x6=36)
-};
-```
-**Cohort testing:** Run one variant at a time site-wide. Change V, push, new cohort begins.
-Do NOT run parallel variants (confuses user experience).
-
----
-
-## Payment / Business Status
-- **CCBill application:** NOT YET SUBMITTED — needs live domain + LLC + EIN
-- **Segpay:** Backup processor — same requirements
-- **Wyoming LLC:** NOT YET FORMED — use Northwest Registered Agent (~$225/yr)
-- **EIN:** NOT YET — get immediately after LLC (irs.gov, free, instant on weekdays)
-- **Mercury bank account:** NOT YET — requires LLC docs + EIN
-- **Stripcash affiliate account:** NOT YET SIGNED UP
-
----
-
-## Email / Notifications
-- **Resend.com:** NOT YET SET UP — need account + DNS records + API key
-- **DNS records needed:** SPF, DKIM TXT records for mycamgirlz.com in Cloudflare
-- **API key goes in:** `/home/ubuntu/projects/mycamgirlz/.env` → RESEND_API_KEY
-- **Restart after:** `sudo systemctl restart mcg-auth`
-- **Cloudflare Email Routing:** Set up noreply@mycamgirlz.com → your personal email
-- **Notification system:** NOT YET BUILT — background watcher for favorites going live
-
----
-
-## AWS Services
-```
-Port 8765 — mcp-distributed.service (DO NOT USE)
-Port 8766 — livegrid-api.service (vision API)
-Port 8767 — mcg-auth.service (MyCamGirlz auth — THIS PROJECT)
-```
-**UFW:** 8767 open to Cloudflare IP ranges only (15 CIDR blocks added).
-**DB path:** /home/ubuntu/projects/mycamgirlz/auth.db
-**Env path:** /home/ubuntu/projects/mycamgirlz/.env
-
----
-
-## Critical Rules (DO NOT BREAK)
-1. `body` height must stay `100vh` — removing breaks tile aspect-ratio
-2. `#app` height must stay `calc(100vh - 54px - 40px - 36px)` — header + catbar + footer
-3. `hls.js` config must keep `strictManifestParsing: false`
-4. Always call `destroyAll()` before re-rendering grid (prevents HLS memory leaks)
-5. Gender filter must be double-enforced: API param AND client-side `.filter()`
-6. When any tile unmuted, ALL others must mute — single audio source only
-7. Never commit secrets to repo (repo is public)
-8. Age gate is a VISUAL OVERLAY only — `load()` fires at init regardless, gate just covers the UI
-
----
-
-## Next Priority TODO
-- [ ] **Fix age gate** — button click not entering site (BUG ACTIVE as of 93e0230)
-- [ ] **Resend.com signup** → get API key → wire into .env → restart mcg-auth
-- [ ] **Cloudflare Email Routing** → forward noreply@mycamgirlz.com
-- [ ] **Stripcash signup** → get affiliate ID → wire into AFF.id → push
-- [ ] **Wyoming LLC** → Northwest Registered Agent → northwestregisteredagent.com
-- [ ] **EIN** → irs.gov immediately after LLC
-- [ ] **Mercury bank account** → after LLC + EIN
-- [ ] **CCBill application** → after domain + LLC + EIN
-- [ ] **PostHog on AWS** → wire A.ep endpoint → real analytics
-- [ ] **Admin dashboard** → /admin route, CF Access gated, Cloudflare API + AWS data
-- [ ] **Notification watcher** → background process checks model live status, sends emails
-- [ ] **Cloudflare KV** → variant config editable from admin without deploy
-- [ ] **Named CF tunnel** → replace direct AWS IP exposure with tunnel
-
----
-
-## Coding Rules for This Project
-- Single file only — everything stays in index.html (no separate CSS/JS)
-- No build step, no npm, no framework
-- All pushes via GitHub API from Claude container using token above
-- Python for all file edits on AWS (never PowerShell for JS — BOM injection risk)
-- Run syntax check before every push: `python3 -c "import ast; ..."` for Python files
-- Pages Function at functions/api/auth.js proxies all /api/* calls to AWS:8767
-- JWT secret already generated and in .env — do not regenerate
+**Empty = zero affiliate credit.** Wire Stripcash ID the moment it arrives.
+URL builder: `aurl(username)` in index.html — already wired, just needs `AFF.id`.

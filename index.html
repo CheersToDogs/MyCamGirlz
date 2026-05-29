@@ -504,6 +504,12 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <div style="padding:4px 12px;font-size:12px;color:var(--text2)">Tier: <span id="menu-tier" style="color:var(--pink-soft);font-weight:700"></span></div>
   <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
     <button onclick="doLogout()" style="width:100%;background:transparent;border:none;color:var(--text2);font-size:12px;padding:6px 12px;text-align:left;cursor:pointer;border-radius:var(--rsm);transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='transparent'">Sign Out</button>
+    <div id="menu-setpw-wrap" style="display:none;border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+      <div style="padding:4px 12px 6px;font-size:11px;color:var(--text3)">Set a password for quick sign-in:</div>
+      <input id="menu-pw-input" type="password" placeholder="New password (8+ chars)" style="width:calc(100% - 24px);margin:0 12px 6px;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);font-size:11px;font-family:var(--font)">
+      <button onclick="doSetPassword()" style="width:calc(100% - 24px);margin:0 12px;background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;border:none;font-size:11px;font-weight:700;padding:6px;border-radius:var(--rsm);cursor:pointer">Save Password</button>
+      <div id="menu-pw-msg" style="font-size:10px;padding:4px 12px;color:var(--text3)"></div>
+    </div>
   </div>
 </div>
 
@@ -695,6 +701,9 @@ function markReturnVisitor() {
   localStorage.setItem('mcg_rv', (parseInt(was||'0') + 1).toString());
 }
 const AFF = {id:'',campaign:'mycamgirlz'};
+// ── PAYMENT ─────────────────────────────────────────────
+// Swap CCBILL_URL when CCBill approval arrives — one line change
+const CCBILL_URL = 'https://billing.ccbill.com/jpost/signup.cgi?PLACEHOLDER';
 const aurl = u => AFF.id
   ? `https://go.stripchat.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
   : `https://stripchat.com/${u}`;
@@ -1178,7 +1187,14 @@ document.getElementById('ti').addEventListener('keydown',e=>{
 });
 
 document.getElementById('pbtn').addEventListener('click',()=>{S.paused=!S.paused;document.getElementById('pbtn').textContent=S.paused?'▶':'⏸';S.paused?haltAll():resumeAll();A.track(S.paused?'pause':'play');});
-document.getElementById('subbtn').addEventListener('click',()=>{A.track('subscribe',{price:V.price});alert('CCBill integration coming soon.');});
+document.getElementById('subbtn').addEventListener('click',()=>{
+  A.track('subscribe',{price:V.price});
+  if (CCBILL_URL.includes('PLACEHOLDER')) {
+    alert('Payment processing coming soon — check back shortly!');
+    return;
+  }
+  window.open(CCBILL_URL, '_blank', 'noopener');
+});
 document.getElementById('disbtn').addEventListener('click',()=>{if(!S.cd)document.getElementById('pwm').classList.remove('show');A.track('dismiss');});
 document.getElementById('pwbg').addEventListener('click',()=>{if(!S.cd)document.getElementById('pwm').classList.remove('show');});
 document.getElementById('pvcl').addEventListener('click',()=>document.getElementById('pvm').classList.remove('show'));
@@ -1269,6 +1285,9 @@ function onLogin(user) {
   document.getElementById('login-btn').style.display = 'none';
   document.getElementById('menu-email').textContent = user.email;
   document.getElementById('menu-tier').textContent = user.tier === 'paid' ? '⭐ Premium' : '🆓 Free';
+  // Show set-password option for paid users
+  const spw = document.getElementById('menu-setpw-wrap');
+  if (spw) spw.style.display = user.tier === 'paid' ? 'block' : 'none';
   // Re-render grid with new tier limits
   if (S.models.length) renderGrid(S.models.slice(0, gridLimit()));
 }
@@ -1410,6 +1429,21 @@ document.getElementById('user-pill').addEventListener('click', e => {
 document.addEventListener('click', () => {
   document.getElementById('user-menu').style.display = 'none';
 });
+
+async function doSetPassword() {
+  const pw = document.getElementById('menu-pw-input').value;
+  const msg = document.getElementById('menu-pw-msg');
+  if (!pw || pw.length < 8) { msg.textContent = 'At least 8 characters required.'; msg.style.color='var(--pink)'; return; }
+  try {
+    await apiPost('/auth/set-password', { password: pw });
+    msg.textContent = '✓ Password saved.'; msg.style.color='#6fe87a';
+    document.getElementById('menu-pw-input').value = '';
+    setTimeout(() => { msg.textContent=''; }, 3000);
+    A.track('set_password');
+  } catch(e) {
+    msg.textContent = e.message || 'Failed to save.'; msg.style.color='var(--pink)';
+  }
+}
 
 async function doLogout() {
   try { await apiPost('/auth/logout', {}); } catch(e) {}
@@ -1777,6 +1811,32 @@ initAuth();
 if(S.cd){tickCD();showPW('resume');}
 initPillLabels();
 applyGridLayout();
+
+// Handle magic link verify redirect — ?auth=ok or ?auth=expired
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const authParam = params.get('auth');
+  if (authParam === 'ok') {
+    // Clean URL without reload
+    history.replaceState({}, '', '/');
+    // initAuth() already called above and will pick up the cookie
+    // Show brief welcome toast
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(111,232,122,.15);border:1px solid rgba(111,232,122,.4);color:#6fe87a;font-family:var(--font);font-size:12px;font-weight:700;padding:8px 18px;border-radius:var(--rp);z-index:9999;pointer-events:none;animation:fadeIn .3s ease';
+    toast.textContent = '✓ Signed in successfully';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+    A.track('magic_link_verified');
+  } else if (authParam === 'expired') {
+    history.replaceState({}, '', '/');
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(255,62,138,.15);border:1px solid rgba(255,62,138,.4);color:#ff3e8a;font-family:var(--font);font-size:12px;font-weight:700;padding:8px 18px;border-radius:var(--rp);z-index:9999;pointer-events:none';
+    toast.textContent = '⚠ Link expired — request a new one';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+    showAuthModal('Link expired', 'That sign-in link has expired. Enter your email for a fresh one.');
+  }
+})();
 // Always load — age gate is a visual overlay only, doesn't block JS
 load();
 A.track('start',{variant:V.id,ref:document.referrer});

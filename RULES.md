@@ -1,291 +1,143 @@
 # MyCamGirlz — Rules & Session Protocol
+**Last Updated:** 2026-05-29
 
 ---
 
 ## Session Start (every chat)
 
-1. Read `PROJECT.md` from repo — confirms current state, **especially the STATE OF REALITY section**
+1. Read `PROJECT.md` from repo — confirms current state
 2. `git log --oneline -3` — confirms what's deployed
-3. `curl -s https://mycamgirlz.com | head -5` — confirm live site is current
-4. `curl -s http://127.0.0.1:8767/health` on AWS — **EXPECTED TO FAIL until auth backend is deployed** (see PROJECT.md State of Reality, 2026-05-27). Treat failure as confirmation of current state, not as a regression.
-5. Check `KNOWN ISSUES` section of PROJECT.md before touching anything
-
-## Reality-Check Rule
-
-Before claiming any component "is deployed" or "is running," **verify on the actual server** (SSH for AWS services, curl for HTTP endpoints, `systemctl status` for systemd units). Past docs have described designed-but-undeployed components as if they were live. When in doubt, run the check before writing the claim.
+3. `curl -s https://mycamgirlz.com/api/auth/me` — must return JSON not HTML
+4. `curl -s http://127.0.0.1:8880/health` on AWS — must return `{"ok":true}`
 
 ---
 
 ## Code Rules — NEVER BREAK
 
-### The absolute rules
-1. **Single file** — everything stays in `index.html`. No separate .css or .js files ever.
-2. **No build step** — no npm, no webpack, no vite, no framework. Vanilla JS + CDN only.
-3. **No Base64** — anywhere, ever, for any reason.
-4. **Never commit secrets** — repo is public. No API keys, tokens, passwords, or JWTs in any file.
-5. **`body` height = `100vh`** — removing breaks tile aspect-ratio. Do not touch.
-6. **`#app` height = `calc(100vh - 54px - 40px - 36px)`** — header + catbar + footer. Do not touch.
-7. **`strictManifestParsing: false`** — required in every HLS instance. Stripchat uses non-standard EXT-X-MOUFLON tag. Removing breaks all streams.
-8. **`destroyAll()` before every grid re-render** — prevents HLS memory leaks and zombie instances.
-9. **Gender filter double-enforced** — API `gender` param is unreliable. Always also `.filter(m => m.gender === f.gender)` client-side.
-10. **Single audio source** — when any tile unmutes, ALL other tiles must mute immediately.
-
-### Age gate rule
-The age gate (`#agegate`) is a **visual overlay only**. `load()` fires at page init regardless of gate state. The button click just hides the div. Do not gate `load()` or any other JS behind the age gate.
-
-### Variant config rule
-`const V` controls all A/B test parameters. Run **one variant at a time, site-wide**. Never split users in parallel — breaks the user experience. Change `V.id` when starting a new cohort so analytics can distinguish.
+1. **Single file** — everything in `index.html`. No separate .css/.js files.
+2. **No build step** — no npm, no webpack. Vanilla JS + CDN only.
+3. **No Base64** — anywhere, ever.
+4. **Never commit secrets** — repo is public.
+5. **`body` height = `100vh`** — removing breaks tile aspect-ratio.
+6. **`strictManifestParsing: false`** — on every HLS instance. Stripchat EXT-X-MOUFLON tag.
+7. **`destroyAll()` before every grid re-render** — prevents HLS memory leaks.
+8. **Gender filter double-enforced** — API param + client-side `.filter()`.
+9. **Single audio source** — unmute one → mute all others.
+10. **Age gate is visual overlay only** — `load()` fires at init regardless.
 
 ---
 
 ## File Editing Rules
 
-### For index.html (local edits via Claude container)
+### index.html (Claude container)
 ```python
-# ALWAYS read before editing
-content = open('/home/claude/index.html', 'r', encoding='utf-8').read()
-
-# ALWAYS write back correctly
-open('/home/claude/index.html', 'w', encoding='utf-8', newline='').write(content)
+with open('index.html', encoding='utf-8', newline='') as f:
+    c = f.read()
+# ... edits ...
+with open('index.html', 'w', encoding='utf-8', newline='') as f:
+    f.write(c)
 ```
 
-### For AWS files
-**Always use Python heredocs** — never shell echo or cat with strings that contain JS/quotes:
+### AWS files — always use Python heredocs
 ```bash
 cat << 'PYEOF' > /tmp/script.py
 # python script here
 PYEOF
 python3 /tmp/script.py
 ```
-
-### NEVER use PowerShell for JS
-PowerShell `Out-File` and `Set-Content` inject BOM (bytes 0xEF 0xBB 0xBF) that silently breaks `var`/`const`/`let` declarations at runtime. All JS must be written via Python or direct file operations.
+**Never PowerShell** — injects BOM that silently breaks JS.
 
 ### Syntax check before every push
 ```bash
-# For Python files
-python3 -c "import ast; ast.parse(open('file.py').read()); print('OK')"
-
-# For JS (node available)
-node --check file.js
+python3 -c "import ast; ast.parse(open('auth_api.py').read()); print('OK')"
 ```
 
 ---
 
 ## Git Protocol
 
-### Standard push (from Claude container)
 ```bash
-TOKEN="ghp_..."  # ask Ken for current token
-cd /home/claude
-git add index.html functions/api/[[path]].js
-git commit -m "concise description of change"
-git push origin main
+TOKEN="ghp_..."  # ask Ken for current token — do not store in repo
+cd /home/claude/MyCamGirlz
+git add index.html functions/
+git commit -m "Fix: what broke and how / Add: feature / Update: what changed"
+git push https://${TOKEN}@github.com/CheersToDogs/MyCamGirlz.git main
+git remote set-url origin https://github.com/CheersToDogs/MyCamGirlz.git  # scrub token
 ```
 
-### Never force push to main without confirming
-Force push rewrites history. Only acceptable to remove accidentally committed secrets (use `--amend` + force push in that case only).
+After push, wait ~60s for Cloudflare Pages deploy.
 
-### Rollback pattern
+**Rollback:**
 ```bash
-git checkout <good-commit-hash> -- index.html
-git add index.html
-git commit -m "revert: <reason>"
-git push origin main
+git checkout <good-commit> -- index.html
+git commit -m "Revert: reason"
+git push ...
 ```
-Never use `git revert` on single-file projects — creates confusing merge commits.
-
-### Commit message format
-- `Fix: <what broke and how fixed>`
-- `Add: <new feature>`
-- `Update: <what changed>`
-- `Config: <config change>`
-Never commit with generic messages like "update" or "fix bug".
 
 ---
 
 ## AWS Operations
 
-### Connect
 ```
 host: 98.95.155.84
 user: ubuntu
-key:  C:/Users/kb/.ssh/id_rsa
 ```
 
-### Auth API service
 ```bash
 sudo systemctl status mcg-auth --no-pager
 sudo systemctl restart mcg-auth
 sudo journalctl -u mcg-auth -n 50 --no-pager
 ```
 
-### Environment file
-```bash
-cat /home/ubuntu/projects/mycamgirlz/.env
-# Edit:
-nano /home/ubuntu/projects/mycamgirlz/.env
-sudo systemctl restart mcg-auth  # always restart after .env change
+**Port map:**
 ```
-
-### Port safety
-```
-8765 — mcp-distributed.service — DO NOT TOUCH, DO NOT KILL, DO NOT REASSIGN
-8766 — livegrid-api.service    — separate project, do not disturb
-8767 — mcg-auth.service        — this project only
+8880 — mcg-auth (THIS PROJECT) ← use this
+8080 — other project api.app   ← do not disturb
+8766 — livegrid-api            ← do not disturb
 ```
 
 ---
 
 ## Deployment Verification
 
-After every push, verify:
 ```bash
-# 1. Check Cloudflare deployment (wait ~60s)
-curl -s -o /dev/null -w "%{http_code}" https://mycamgirlz.com
-# Expected: 200
-
-# 2. Check Pages Function routing
 curl -s https://mycamgirlz.com/api/auth/me
-# Expected: {"detail":"Not authenticated"} (JSON, not HTML)
+# Must return: {"detail":"Not authenticated"}  (JSON, not HTML, not error code 1003)
 
-# 3. Check auth API directly
-curl -s http://127.0.0.1:8767/health
-# Expected: {"ok":true}
+curl -s http://127.0.0.1:8880/health
+# Must return: {"ok":true}
 ```
 
-If `/api/auth/me` returns HTML instead of JSON: Pages Function is not routing. Check that `functions/api/[[path]].js` exists in the repo (not `auth.js`).
+If `/api/auth/me` returns 1003: Pages Function is hitting a Cloudflare loop-detection block.
+Fix: ensure Pages Function uses `https://auth.mycamgirlz.com` not a raw IP.
 
 ---
 
 ## Security Rules
 
-### Never expose
-- JWT_SECRET
-- RESEND_API_KEY  
-- GitHub personal access token
-- AWS SSH private key
-- CCBill credentials (when obtained)
-- Stripcash affiliate ID (not a secret but don't hardcode in public commits carelessly)
+**Never expose:** JWT_SECRET, GitHub PAT, AWS SSH key, CCBill credentials, config.py contents.
 
-### Always enforce
-- HTTPS only (Cloudflare handles)
-- HttpOnly + Secure + SameSite=Strict on session cookie
-- No stack traces in API error responses
-- Rate limiting on all auth endpoints
-- Input validation before any DB write
+**Cookie:** HttpOnly + Secure + SameSite=Lax + domain=mycamgirlz.com + 30-day max-age.
 
-### Cloudflare WAF (free tier)
-- Managed Rules → OWASP: ENABLED
-- Bot Fight Mode: OFF (interferes with HLS stream fetches)
-- Block AI Bots: ON
+**CF WAF:** OWASP managed rules ON. Bot Fight Mode OFF (breaks HLS fetches).
 
 ---
 
-## What Requires Business Setup Before Building
+## Session Protocol
 
-| Feature | Requires |
-|---|---|
-| Subscription payments | Wyoming LLC + EIN + Mercury + CCBill approval |
-| Email sending (magic links) | Resend.com signup + DNS records |
-| Revenue attribution | Stripcash signup + affiliate ID |
-| Admin auth gate | Cloudflare Access (free, just needs setup) |
-| Named CF tunnel | Custom domain on tunnel (mycamgirlz.com already registered) |
-| TrafficJunky/ExoClick ads | Live site + sufficient traffic |
+- Hash save every 5 tool calls
+- Rotation prep at tool call ~40: call `hash_store_content_v2` FIRST before anything else
+- Save session context at end of session
+- Check for previous hash context at start of session
 
 ---
 
-## Project File Locations
+## One-Line Wires (do these when approvals come through)
 
+```js
+// Stripcash approval → wire AFF.id:
+const AFF = {id:'YOUR_STRIPCASH_ID', campaign:'mycamgirlz'};
+
+// CCBill approval → swap CCBILL_URL constant:
+const CCBILL_URL = 'https://billing.ccbill.com/jpost/signup.cgi?clientSubacc=...';
 ```
-GitHub (source of truth):
-  CheersToDogs/MyCamGirlz/
-  ├── index.html                    ← entire frontend
-  ├── functions/api/[[path]].js     ← CF Pages Function proxy
-  └── PROJECT.md                    ← master state doc
-
-Claude container (working copy):
-  /home/claude/
-  ├── index.html                    ← edit here, push to GitHub
-  ├── functions/api/[[path]].js
-  ├── PROJECT.md
-  ├── ARCH.md                       ← this project's arch doc
-  └── RULES.md                      ← this file
-
-AWS (backend):
-  /home/ubuntu/projects/mycamgirlz/
-  ├── auth_api.py                   ← FastAPI auth server
-  ├── auth.db                       ← SQLite database
-  └── .env                          ← secrets (NOT in git)
-```
-
----
-
-## Context Rotation Protocol
-
-**Every ~5 tool calls:** save session state to hash.
-**At rotation prep:** call `hash_store_content_v2` with full session state BEFORE saying anything else.
-**At session end:** update PROJECT.md on AWS and in repo with any new decisions/features/bugs.
-
-**Hash project name:** `mycamgirlz` (not `livegrid` — separate project)
-
----
-
-## New Project Space Setup
-
-This project lives in its own Claude project space. The project instructions should contain:
-- Repo URL and live URL
-- Session start protocol (read PROJECT.md, check git log, verify live)
-- Pointer to ARCH.md and RULES.md in the repo
-- One-line reminder: single file, no build, no framework, no Base64
-
-The three key docs are:
-1. `PROJECT.md` — current state, what's built, what's pending, bugs
-2. `ARCH.md` — how everything works technically
-3. `RULES.md` — this file — how to work on it safely
-
----
-
-## Background Context (for new chat sessions)
-
-**What MyCamGirlz is:**
-Multi-stream live cam grid viewer. Users watch multiple Stripchat models simultaneously. Monetized via Stripcash affiliate revshare (20% lifetime) + $9.99/mo subscriptions. CamSoda-inspired UI. No competitors in this exact space — ModelTrackr (Chaturbate only, tracker-focused) is closest but different.
-
-**Why it works:**
-Stripchat public API returns HLS stream URLs with no auth. Streams are intentionally public — Stripchat's model is freemium, affiliate-driven traffic benefits them. Stripcash explicitly supports building cam sites on their API. MyCamGirlz surfaces 4-36 streams simultaneously — a discovery experience their own UI doesn't offer.
-
-**Revenue logic:**
-Free users discover models → get hooked → click through via affiliate link (resets 30-day cookie) → register on Stripchat → buy tokens → you earn 20% of every dollar they ever spend. "Favorite is live" notification emails re-click the affiliate link → resets cookie each time → maximizes lookback window monetization.
-
-**Business status:**
-Wyoming LLC not yet formed. CCBill application not yet submitted. Stripcash account not yet created. All three needed before real revenue flows. Domain mycamgirlz.com registered 2026-04-08 on Cloudflare.
-
-**Tech stack summary:**
-Frontend: single HTML file, vanilla JS, hls.js CDN, Cloudflare Pages.
-Backend: FastAPI on AWS port 8767, SQLite, magic link auth, PyJWT, Resend (pending).
-Infra: Cloudflare (CDN, Pages, DNS, WAF), AWS EC2 (auth API only).
-No React, no Node, no databases beyond SQLite, no paid services beyond AWS.
-
----
-
-## QUADVIEW — The Four-Lens Analysis Framework
-
-For any non-trivial decision, architectural choice, debugging effort, or recommendation, evaluate through ALL FOUR lenses before answering. Skipping any lens is a quality failure. Surface tensions between lenses explicitly — they are usually where the real answer lives.
-
-### Lens 1 — Probabilistic
-The forecasting view. What is most likely to happen? What are the realistic distributions of outcomes given the available evidence, base rates, and prior experience? Quantify when possible (rough percentages are fine, false precision is not). Avoid both over-confidence and false humility.
-
-### Lens 2 — Deterministic
-The empirical view. Trace step-by-step through what actually happens. Verify with boolean checks: does this file exist? Does this command return what I expect? Does the test pass? Does the produced artifact match the spec? Treat assumptions as suspect until proven. This lens is the antidote to hallucination and the safeguard against confident-but-wrong answers.
-
-### Lens 3 — Engineer's Checklist
-The best-practices view. Systematically walk through the standard checklist that applies to this kind of work — for a backend feature: input validation, auth, rate limiting, error handling, logging, tests, idempotency, observability, rollback plan. For a deployment: backups, monitoring, health checks, secrets management, etc. Then go ONE STEP BEYOND the checklist: apply the "what could go wrong" pre-mortem lens — what is the failure mode most engineers miss for this kind of thing?
-
-### Lens 4 — Software Architect's Holistic
-The systems view. Look across all dimensions simultaneously and consider their interactions: performance vs. function vs. structural integrity vs. architecture vs. human interface vs. security vs. LLM-management vs. cost vs. legal/compliance vs. operational burden. Where do tradeoffs sit? Which dimensions are load-bearing for this specific project? Which constraints actually bind?
-
-### How to Apply
-- For trivial requests (a quick fact, a simple edit), full quadview is overkill — note it and proceed.
-- For ANY architectural, security, payment, compliance, or "should I" question — run all four lenses, briefly, in writing or in thought. Surface the tension points.
-- When the four lenses disagree, that disagreement IS the insight. Do not paper over it — name it.
-- Codified 2026-05-27 in this session; expand and refine as projects evolve.
