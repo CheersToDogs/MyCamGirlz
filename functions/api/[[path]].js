@@ -1,63 +1,31 @@
 /**
- * Cloudflare Pages Function — /api/auth/*
- * Proxies auth requests to AWS:8767
- * Keeps AWS endpoint private — never exposed to client
- * Adds CORS, strips internal headers
+ * Cloudflare Pages Function — /api/*
+ * Proxies auth requests to auth.mycamgirlz.com (EC2 via HTTPS, DNS-only)
+ * Direct IP fetch blocked by CF loop detection — subdomain bypasses it
  */
 
-const UPSTREAM = 'http://98.95.155.84:8880';
+const UPSTREAM = 'https://auth.mycamgirlz.com';
 const ALLOWED  = ['https://mycamgirlz.com', 'https://www.mycamgirlz.com'];
 
 export async function onRequest(context) {
-  const { request, env } = context;
+  const { request } = context;
   const url    = new URL(request.url);
   const origin = request.headers.get('Origin') || '';
 
-  // Debug: confirm function is running
-  if (url.pathname === '/api/_ping') {
-    return new Response(JSON.stringify({pong:true, ts:Date.now()}), {
-      headers: {'Content-Type':'application/json'}
-    });
-  }
-
-  // Debug: test upstream connectivity
-  if (url.pathname === '/api/_upstream_test') {
-    try {
-      const r = await fetch('http://98.95.155.84:8880/health', {method:'GET'});
-      const body = await r.text();
-      return new Response(JSON.stringify({status:r.status, body}), {
-        headers: {'Content-Type':'application/json'}
-      });
-    } catch(e) {
-      return new Response(JSON.stringify({error:e.message, type:e.constructor.name}), {
-        status:500, headers: {'Content-Type':'application/json'}
-      });
-    }
-  }
-
-  // CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders(origin),
-    });
+    return new Response(null, { status: 204, headers: corsHeaders(origin) });
   }
 
-  // Block non-allowed origins in production
   if (origin && !ALLOWED.includes(origin) && !url.hostname.endsWith('pages.dev')) {
     return new Response('Forbidden', { status: 403 });
   }
 
-  // Build upstream URL — strip /api prefix, keep rest of path + query
-  // For catch-all [[path]], context.params.path has segments after /api/
-  const pathStr = Array.isArray(context.params.path) ? context.params.path.join('/') : (context.params.path || '');
-  const upstreamPath = '/' + pathStr + url.search;
-  const upstreamUrl  = UPSTREAM + upstreamPath;
+  const pathStr     = Array.isArray(context.params.path) ? context.params.path.join('/') : (context.params.path || '');
+  const upstreamUrl = UPSTREAM + '/' + pathStr + url.search;
 
-  // Forward request
   const upstreamReq = new Request(upstreamUrl, {
     method:  request.method,
-    headers: forwardHeaders(request, origin),
+    headers: forwardHeaders(request),
     body:    ['GET','HEAD'].includes(request.method) ? undefined : request.body,
   });
 
@@ -71,26 +39,21 @@ export async function onRequest(context) {
     });
   }
 
-  // Return response with CORS headers added
   const body    = await resp.arrayBuffer();
   const headers = new Headers(resp.headers);
   Object.entries(corsHeaders(origin)).forEach(([k,v]) => headers.set(k,v));
-
-  // Security: remove any internal headers
   headers.delete('X-Powered-By');
   headers.delete('Server');
 
   return new Response(body, { status: resp.status, headers });
 }
 
-function forwardHeaders(request, origin) {
+function forwardHeaders(request) {
   const h = new Headers();
-  // Forward content-type and cookies
   const ct = request.headers.get('Content-Type');
   if (ct) h.set('Content-Type', ct);
   const cookie = request.headers.get('Cookie');
   if (cookie) h.set('Cookie', cookie);
-  // Pass real IP to upstream for rate limiting
   const cfIp = request.headers.get('CF-Connecting-IP');
   if (cfIp) h.set('CF-Connecting-IP', cfIp);
   h.set('X-Forwarded-Proto', 'https');
