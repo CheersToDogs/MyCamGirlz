@@ -473,11 +473,27 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     <button class="am-close" id="am-close">✕</button>
     <div class="am-title" id="am-title">Welcome to MyCamGirlz</div>
     <div class="am-sub" id="am-sub">Enter your email — we'll send you a magic link to sign in instantly. No password needed.</div>
-    <div class="am-form">
-      <input class="am-input" id="am-email" type="email" placeholder="your@email.com" autocomplete="email">
-      <button class="am-submit" id="am-submit">Send Magic Link →</button>
+    <div id="am-magic-form">
+      <div class="am-form">
+        <input class="am-input" id="am-email" type="email" placeholder="your@email.com" autocomplete="email">
+        <button class="am-submit" id="am-submit">Send Magic Link →</button>
+      </div>
+      <div class="am-msg" id="am-msg"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:14px;text-align:center">
+        Premium member? <a href="#" id="am-pw-toggle" style="color:var(--pink-soft);text-decoration:none;font-weight:600">Sign in with password →</a>
+      </div>
     </div>
-    <div class="am-msg" id="am-msg"></div>
+    <div id="am-pw-form" style="display:none">
+      <div class="am-form" style="flex-direction:column;gap:8px">
+        <input class="am-input" id="am-pw-email" type="email" placeholder="your@email.com" autocomplete="email">
+        <input class="am-input" id="am-pw-pass" type="password" placeholder="Password" autocomplete="current-password">
+        <button class="am-submit" id="am-pw-submit">Sign In →</button>
+      </div>
+      <div class="am-msg" id="am-pw-msg"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:14px;text-align:center">
+        <a href="#" id="am-ml-toggle" style="color:var(--pink-soft);text-decoration:none;font-weight:600">← Use magic link instead</a>
+      </div>
+    </div>
     <div style="font-size:10px;color:var(--text3);margin-top:14px;line-height:1.6">By signing up you agree to our <a href="#" onclick="showLegal('tos');return false" style="color:var(--text2)">Terms</a> and <a href="#" onclick="showLegal('privacy');return false" style="color:var(--text2)">Privacy Policy</a>. Adults 18+ only.</div>
   </div>
 </div>
@@ -663,7 +679,21 @@ const V = {id:'v1',free_minutes:2,reset_hours:3,price:9.99,modal_copy:'A',
 };
 // Randomize free timer 90–180s — variable interval schedule (Skinner, 1938)
 // Uncertainty maximizes dopamine; fixed intervals allow habituation
-function randTimer() { return 90 + Math.floor(Math.random() * 91); } // 90–180s
+function randTimer() {
+  const base = 90 + Math.floor(Math.random() * 91); // 90–180s
+  // Return visitors: 1-in-5 chance of bonus time (25% extra)
+  const rv = localStorage.getItem('mcg_rv');
+  if (rv && Math.random() < 0.2) {
+    A.track('bonus_time');
+    return Math.floor(base * 1.25);
+  }
+  return base;
+}
+// Mark as return visitor after first engagement
+function markReturnVisitor() {
+  const was = localStorage.getItem('mcg_rv');
+  localStorage.setItem('mcg_rv', (parseInt(was||'0') + 1).toString());
+}
 const AFF = {id:'',campaign:'mycamgirlz'};
 const aurl = u => AFF.id
   ? `https://go.stripchat.com/?userId=${AFF.id}&campaign=${AFF.campaign}&trackingKey=${encodeURIComponent(u)}`
@@ -693,7 +723,7 @@ const S = {
   user: null,          // null=anon, {id,email,tier,verified} = logged in
   paid: false,
   // timer state
-  ta:false, ts:0, cd:false, cds:0,
+  ta:false, ts:0, cd:false, cds:0, ix:0,
   // grid state
   n:3, models:[], hls:{}, at:null, paused:false,
   f:{gender:'female',sort:'viewersCount',country:'',tag:'',age:'',body:'',ethnicity:''},
@@ -730,9 +760,10 @@ let tiv = null;
 function startTimer() {
   if (S.paid||S.ta) return;
   S.ta = true;
-  S.ts = randTimer(); // randomized at engagement time, not page load
+  S.ts = randTimer();
   const ex = Date.now() + S.ts*1000;
   saveSess({ex});
+  markReturnVisitor();
   A.track('free_start',{secs:S.ts});
   tiv = setInterval(tickT, 1000);
   renderT();
@@ -875,15 +906,27 @@ function startAnonRotation() {
 })();
 
 function expireT() {
-  // Arousal maintenance: keep streams playing behind semi-transparent overlay.
-  // Audio stream continues — they can hear it but access is gated.
-  // Do NOT halt or blur — interrupting breaks the hot state.
+  // Progressive degradation:
+  // 1. Pause all video streams — snaps (thumbnails) stay visible
+  // 2. Audio stream that was active keeps playing — they can hear but not see
+  // 3. Semi-transparent paywall overlay shows — streams visible behind it
+  document.querySelectorAll('#grid .tile').forEach(tile => {
+    const vid = tile.querySelector('video');
+    const snap = tile.querySelector('.snap');
+    if (vid) vid.pause();
+    // Reveal the snapshot thumbnail (was hidden once HLS loaded)
+    if (snap) snap.classList.remove('h');
+  });
+  // Keep audio stream playing if one is active
+  if (S.at) {
+    const vid = S.at.querySelector('video');
+    if (vid) { vid.muted = false; vid.play().catch(()=>{}); }
+  }
   A.track('expired',{w:S.ws});
   showPW('expired');
-  // Show email unlock banner and micro-grid pill as escape valves
   document.getElementById('email-unlock').classList.add('show');
   document.getElementById('mg-pill').classList.add('show');
-  // Update social proof with live count
+  // Live social proof count
   const lc = S.models.length;
   if (lc > 0) {
     const watching = Math.max(lc * 180 + Math.floor(Math.random()*400), 3800);
@@ -960,7 +1003,7 @@ function makeTile(m) {
   if (S.favorites.has(m.username)) fb.classList.add('on');
   fb.addEventListener('click', e => { e.stopPropagation(); toggleFavorite(m.username, fb); });
   tile.appendChild(fb);
-  tile.addEventListener('click',()=>{if(S.cd){showPW('tile');return;} openPV(m); A.track('tile_click',{u:m.username,vc:m.viewersCount});});
+  tile.addEventListener('click',()=>{if(S.cd){showPW('tile');return;} trackInteraction('tile'); openPV(m); A.track('tile_click',{u:m.username,vc:m.viewersCount});});
   S.ws[m.username]=0;
   const wi=setInterval(()=>{if(!S.paused&&!S.cd)S.ws[m.username]++;},1000); tile._wi=wi;
   const url=getUrl(m);
@@ -981,7 +1024,7 @@ function makeTile(m) {
 function toggleAudio(tile,vid) {
   // Audio is gated behind email for anonymous users — it's the best single hook
   if (!S.user) {
-    A.track('audio_gate',{u:tile.dataset.u});
+    A.track('audio_gate',{u:tile.dataset.u}); trackInteraction('audio');
     showEmailUnlock('audio');
     return;
   }
@@ -1028,6 +1071,14 @@ async function load() {
   showLoading(true); showEmpty(false);
   try {
     const ms=await fetchModels(); S.models=ms;
+    // Return visitors: shuffle top models slightly for variety
+    // Keeps the experience feeling fresh on repeat visits
+    const rv = parseInt(localStorage.getItem('mcg_rv')||'0');
+    if (rv > 1 && ms.length > 20) {
+      // Lightly shuffle top 30 — don't bury best streams but add novelty
+      const top = ms.slice(0, 30).sort(() => Math.random() - 0.45);
+      S.models = [...top, ...ms.slice(30)];
+    }
     const cs=document.getElementById('csel');
     if(ms.length){
       const countries=[...new Set(ms.map(m=>m.country).filter(Boolean))].sort();
@@ -1254,6 +1305,62 @@ function hideAuthModal() {
 
 document.getElementById('am-close').addEventListener('click', hideAuthModal);
 document.getElementById('am-bg').addEventListener('click', hideAuthModal);
+
+// ── MICRO-COMMITMENT TRACKING ─────────────────────────
+// Count meaningful interactions — escalate urgency in timer pill
+function trackInteraction(type) {
+  if (S.paid || !S.ta) return;
+  S.ix++;
+  markReturnVisitor();
+  if (S.ix === 3) {
+    // First escalation: timer pill pulses once
+    const wrap = document.getElementById('tpill-wrap');
+    if (wrap) { wrap.style.transform='scale(1.08)'; setTimeout(()=>wrap.style.transform='',300); }
+  }
+  if (S.ix === 5 && !S.user) {
+    // Second escalation: show email banner with personalized copy
+    const t = document.querySelector('#email-unlock .eu-title');
+    if (t) t.textContent = `🔥 You've watched ${S.ix} streams — save your session`;
+    showEmailUnlock('engaged');
+  }
+  A.track('interaction',{type,ix:S.ix});
+}
+
+// ── PASSWORD LOGIN ─────────────────────────────────────
+document.getElementById('am-pw-toggle')?.addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('am-magic-form').style.display = 'none';
+  document.getElementById('am-pw-form').style.display = 'block';
+  document.getElementById('am-pw-email').focus();
+});
+document.getElementById('am-ml-toggle')?.addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('am-pw-form').style.display = 'none';
+  document.getElementById('am-magic-form').style.display = 'block';
+  document.getElementById('am-email').focus();
+});
+document.getElementById('am-pw-submit')?.addEventListener('click', async () => {
+  const email = document.getElementById('am-pw-email').value.trim();
+  const pass  = document.getElementById('am-pw-pass').value;
+  const msg   = document.getElementById('am-pw-msg');
+  const btn   = document.getElementById('am-pw-submit');
+  if (!email || !pass) { msg.textContent='Enter email and password.'; msg.className='am-msg err'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const res = await apiPost('/auth/login', { email, password: pass });
+    if (res.ok) {
+      const me = await apiGet('/auth/me');
+      if (me) { S.user = me; S.paid = me.tier === 'paid'; onLogin(me); }
+      document.getElementById('auth-modal').classList.remove('show');
+      if (S.models.length) renderGrid(S.models.slice(0, gridLimit()));
+      A.track('login_pw');
+    }
+  } catch(e) {
+    msg.textContent = e.message || 'Invalid email or password.';
+    msg.className = 'am-msg err';
+    btn.disabled = false; btn.textContent = 'Sign In →';
+  }
+});
 
 document.getElementById('login-btn').addEventListener('click', () => showAuthModal());
 
