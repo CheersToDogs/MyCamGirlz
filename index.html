@@ -171,7 +171,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 /* PAYWALL MODAL */
 #pwm{display:none;position:fixed;inset:0;z-index:200;align-items:center;justify-content:center}
 #pwm.show{display:flex}
-.mbg{position:absolute;inset:0;background:rgba(8,5,14,.9);backdrop-filter:blur(12px)}
+.mbg{position:absolute;inset:0;background:rgba(8,5,14,.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .mc{position:relative;z-index:1;background:var(--bg2);border:1px solid rgba(255,62,138,.22);border-radius:20px;padding:42px 38px 34px;max-width:430px;width:90%;text-align:center;box-shadow:0 0 60px rgba(255,62,138,.1),0 0 120px rgba(123,47,255,.07);animation:pop .35s cubic-bezier(.34,1.56,.64,1)}
 @keyframes pop{from{opacity:0;transform:scale(.88) translateY(24px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .mc::before{content:'';position:absolute;inset:-1px;border-radius:21px;background:linear-gradient(135deg,rgba(255,62,138,.35),rgba(123,47,255,.35),transparent 60%);z-index:-1}
@@ -495,9 +495,9 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <div id="pwm">
   <div class="mbg" id="pwbg"></div>
   <div class="mc">
-    <div class="mbadge">⏱ Free Session Ended</div>
-    <div class="mtitle">Watch unlimited.<br>No timers. Ever.</div>
-    <div class="msub">Next free session in <strong id="rsinl">3h</strong> — or unlock unlimited access now.</div>
+    <div class="mbadge">🔴 Live Now — Don't Lose This</div>
+    <div class="mtitle">Keep watching.<br>You're already in.</div>
+    <div class="msub"><span id="pw-social">4,200+ members</span> watching right now. Your free preview ended — keep access instantly.</div>
     <div class="mpw"><span class="pd">$</span><span class="pn" id="mpn">9.99</span><span class="pm">/mo</span></div>
     <ul class="mperks">
       <li><span class="pi">🔓</span>No session timers or cooldowns</li>
@@ -505,8 +505,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
       <li><span class="pi">🎯</span>All filters + full tag browser</li>
       <li><span class="pi">♾️</span>Cancel anytime</li>
     </ul>
-    <button class="bcta" id="subbtn">Unlock Unlimited — $<span id="ctap">9.99</span>/mo</button>
-    <button class="bdis" id="disbtn">Wait for free reset (<span id="rcinl">—</span>)</button>
+    <button class="bcta" id="subbtn">Keep My Access — $<span id="ctap">9.99</span>/mo</button>
+    <button class="bdis" id="disbtn">Free reset in <span id="rcinl">—</span> — or enter email for instant access</button>
     <div id="cdl">Next free session in <span id="rclk">—</span></div>
   </div>
 </div>
@@ -875,16 +875,21 @@ function startAnonRotation() {
 })();
 
 function expireT() {
-  // Hold blurred state — do NOT auto-start cooldown
-  // User must manually reset via debug pill (or we handle later)
-  document.querySelectorAll('.tile').forEach(t=>t.classList.add('bl'));
-  haltAll();
+  // Arousal maintenance: keep streams playing behind semi-transparent overlay.
+  // Audio stream continues — they can hear it but access is gated.
+  // Do NOT halt or blur — interrupting breaks the hot state.
   A.track('expired',{w:S.ws});
   showPW('expired');
-  // Show email unlock banner too
+  // Show email unlock banner and micro-grid pill as escape valves
   document.getElementById('email-unlock').classList.add('show');
-  // Show micro-grid pill as escape valve
   document.getElementById('mg-pill').classList.add('show');
+  // Update social proof with live count
+  const lc = S.models.length;
+  if (lc > 0) {
+    const watching = Math.max(lc * 180 + Math.floor(Math.random()*400), 3800);
+    const el = document.getElementById('pw-social');
+    if (el) el.textContent = watching.toLocaleString() + '+ members';
+  }
 }
 
 function tickCD() {
@@ -974,6 +979,12 @@ function makeTile(m) {
 
 // ── AUDIO ──────────────────────────────────────────────
 function toggleAudio(tile,vid) {
+  // Audio is gated behind email for anonymous users — it's the best single hook
+  if (!S.user) {
+    A.track('audio_gate',{u:tile.dataset.u});
+    showEmailUnlock('audio');
+    return;
+  }
   const was=S.at===tile;
   document.querySelectorAll('.tile').forEach(t=>{t.classList.remove('aa');const b=t.querySelector('.abtn');if(b){b.textContent='🔇';b.classList.remove('on');}});
   document.querySelectorAll('#grid video').forEach(v=>{v.muted=true;}); S.at=null;
@@ -1468,8 +1479,15 @@ function updatePillCounts(models) {
 // ══════════════════════════════════════
 // EMAIL UNLOCK (instant, no verification)
 // ══════════════════════════════════════
-function showEmailUnlock() {
+function showEmailUnlock(trig) {
   const el = document.getElementById('email-unlock');
+  // Swap copy for audio gate trigger — more compelling in hot state
+  if (trig === 'audio') {
+    const t = el.querySelector('.eu-title');
+    const s = el.querySelector('.eu-sub');
+    if (t) t.textContent = '🔊 Unmute — hear everything';
+    if (s) s.textContent = 'Enter your email for instant audio access. Free. No credit card.';
+  }
   el.classList.add('show');
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   document.getElementById('eu-email').focus();
