@@ -1144,8 +1144,7 @@ async function fetchModels() {
 async function load() {
   showLoading(true); showEmpty(false);
   try {
-    const ms=await fetchModels(); S.models=ms;
-    // Return visitors: shuffle top models slightly for variety
+    const ms=await fetchModels(); S.models=ms;    // Return visitors: shuffle top models slightly for variety
     // Keeps the experience feeling fresh on repeat visits
     const rv = parseInt(localStorage.getItem('mcg_rv')||'0');
     if (rv > 1 && ms.length > 20) {
@@ -1164,12 +1163,19 @@ async function load() {
     if(ms.length===0){showEmpty(true);return;}
     renderGrid(ms.slice(0,gridLimit()));
     document.getElementById('lcnt').textContent=`${ms.length} live`;
+    // Debug: confirm streams loaded
+    console.log('load() OK:', ms.length, 'models, rendered:', gridLimit());
     A.track('loaded',{count:ms.length,n:S.n});
     updatePillCounts(ms);
   } catch(e) {
     showLoading(false);
     showEmpty(true);
-    console.error(e);
+    console.error('load() error:', e);
+    // Visible debug banner — remove once issue diagnosed
+    const dbg = document.createElement('div');
+    dbg.style.cssText = 'position:fixed;top:60px;left:0;right:0;z-index:9000;background:rgba(255,0,0,.85);color:#fff;font-size:12px;padding:8px 12px;text-align:center;font-family:monospace';
+    dbg.textContent = 'Load error: ' + (e.message || String(e));
+    document.body.appendChild(dbg);
   }
 }
 
