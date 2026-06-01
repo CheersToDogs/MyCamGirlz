@@ -1184,6 +1184,7 @@ function renderGrid(ms) {
   // Anon: 3x5 live preview grid — no locked tiles, scroll triggers secondary counter
   if (!S.user && !S.paid) {
     g.style.gridTemplateColumns = 'repeat(3,1fr)'; // force 3 cols regardless of S.n
+    g.dataset.n = '3'; // prevent 2x2 fullscreen CSS from collapsing tiles
     initScrollPreview();
     startAnonRotation();
   } else if (S.user && !S.paid) {
