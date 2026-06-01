@@ -314,8 +314,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .mgm-fs:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
 .mgm-close{background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;padding:0 2px;transition:color .15s}
 .mgm-close:hover{color:var(--pink)}
-.mgm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;padding:8px;overflow-y:auto;max-height:calc(100vh - 160px);scrollbar-width:thin;scrollbar-color:var(--surface2) transparent}
-#mgm.fullscreen-mode .mgm-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));max-height:calc(100vh - 120px)}
+.mgm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px;padding:6px;overflow-y:auto;max-height:calc(100vh - 160px);scrollbar-width:thin;scrollbar-color:var(--surface2) transparent}
+#mgm.fullscreen-mode .mgm-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));max-height:calc(100vh - 120px)}
 .mg-tile{position:relative;aspect-ratio:16/9;background:var(--bg3);border-radius:var(--r);overflow:hidden;cursor:pointer;border:1px solid var(--border);transition:border-color .15s}
 .mg-tile:hover{border-color:var(--border-hot);box-shadow:0 4px 16px rgba(255,62,138,.2)}
 .mg-tile .snap{position:absolute;inset:0;background-size:cover;background-position:center}
@@ -762,7 +762,7 @@ const S = {
   // timer state
   ta:false, ts:0, cd:false, cds:0, ix:0,
   // grid state
-  n:3, models:[], hls:{}, at:null, paused:false,
+  n:2, models:[], hls:{}, at:null, paused:false,
   f:{gender:'female',sort:'viewersCount',country:'',tag:'',age:'',body:'',ethnicity:''},
   ws:{}, t0:Date.now(),
   // favorites
@@ -1347,6 +1347,12 @@ function onLogin(user) {
   document.getElementById('menu-email').textContent = user.email;
   document.getElementById('menu-tier').textContent = user.tier === 'paid' ? '⭐ Premium' : '🆓 Free';
   A.identify(user);
+  // Set grid to 2x2 for free users on first login (anon default is 3)
+  if (user.tier !== 'paid' && S.n > 3) S.n = 2;
+  if (user.tier !== 'paid' && !S.paid) {
+    S.n = S.n <= 3 ? S.n : 2; // cap at 3x3 max
+    document.querySelectorAll('.gp').forEach(b => b.classList.toggle('on', parseInt(b.dataset.n) === S.n));
+  }
   updateGridButtons();
   // Show set-password option for paid users
   const spw = document.getElementById('menu-setpw-wrap');
@@ -1841,9 +1847,82 @@ function startMGTimer() {
 async function renderMG() {
   const grid = document.getElementById('mgm-grid');
   grid.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text2);font-size:12px">Loading…</div>';
-  // Destroy any lingering HLS instances
   Object.values(mgHls).forEach(h => { try { h.destroy(); } catch(e){} });
   mgHls = {};
+
+  // Fetch model pool
+  let pool = S.models.length >= 50 ? S.models : [];
+  if (!pool.length) {
+    try {
+      const f = S.f;
+      const p = new URLSearchParams({limit:'200',sortBy:'viewersCount',gender:f.gender});
+      const r = await fetch(`https://go.stripchat.com/api/models?${p}`);
+      const d = await r.json();
+      pool = (d.models||d.data||[]).filter(m=>m.status==='public'&&m.stream&&m.stream.urls);
+    } catch(e) { pool = S.models; }
+  }
+
+  // 20 live streams + remainder shown in count banner
+  const live = pool.slice(0, 20);
+  const remaining = Math.max(0, pool.length - live.length);
+  document.getElementById('mgm-more-txt').textContent =
+    remaining > 0 ? `+${remaining} more live right now` : `${pool.length} models live now`;
+
+  grid.innerHTML = '';
+
+  live.forEach(m => {
+    const tile = document.createElement('div');
+    tile.className = 'mg-tile';
+
+    // Snapshot as placeholder while HLS loads
+    const snap = document.createElement('div');
+    snap.className = 'snap';
+    const su = m.snapshotUrl || m.widgetPreviewUrl || '';
+    if (su) snap.style.backgroundImage = `url(${su})`;
+    tile.appendChild(snap);
+
+    // Video element for live HLS
+    const vid = document.createElement('video');
+    vid.muted = true; vid.playsInline = true; vid.autoplay = true;
+    vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s';
+    tile.appendChild(vid);
+
+    // LIVE badge
+    const lb = document.createElement('div');
+    lb.style.cssText = 'position:absolute;top:5px;left:5px;background:var(--pink);color:#fff;font-family:var(--font-d);font-size:8px;font-weight:900;padding:2px 6px;border-radius:100px;letter-spacing:.8px';
+    lb.textContent = 'LIVE';
+    tile.appendChild(lb);
+
+    // Name overlay
+    const info = document.createElement('div');
+    info.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.85),transparent);padding:18px 6px 5px;';
+    info.innerHTML = `<div style="font-family:var(--font-d);font-size:10px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.username}</div>${m.viewersCount?`<div style="font-size:9px;color:rgba(255,255,255,.65)">👁 ${fmt(m.viewersCount)}</div>`:''}`;
+    tile.appendChild(info);
+
+    tile.addEventListener('click', () => { closeMG(); openPV(m); });
+    grid.appendChild(tile);
+
+    // HLS — low quality, tiny buffer, performance-first
+    const url = getUrl(m);
+    if (url && Hls.isSupported()) {
+      const h = new Hls({
+        strictManifestParsing: false,
+        maxBufferLength: 4,
+        maxMaxBufferLength: 8,
+        startLevel: 0,        // lowest quality
+        autoStartLoad: true,
+      });
+      h.loadSource(url);
+      h.attachMedia(vid);
+      h.on(Hls.Events.MANIFEST_PARSED, () => {
+        vid.play().catch(()=>{});
+        vid.style.opacity = '1';
+        snap.style.opacity = '0';
+      });
+      mgHls[m.username] = h;
+    }
+  });
+}
 
   // Fetch 50 models independently of current tier/filter
   let pool = S.models.length >= 50 ? S.models : [];
@@ -1857,43 +1936,7 @@ async function renderMG() {
     } catch(e) { pool = S.models; }
   }
 
-  const show = pool.slice(0, 50);
-  const more = Math.max(0, pool.length - show.length);
-  document.getElementById('mgm-more-txt').textContent =
-    more > 0 ? `+${more} more live right now` : `${pool.length} models live now`;
 
-  grid.innerHTML = '';
-
-  show.forEach(m => {
-    const tile = document.createElement('div');
-    tile.className = 'mg-tile';
-
-    // Pure thumbnail — no HLS, no video element
-    const su = m.snapshotUrl || m.widgetPreviewUrl || '';
-    if (su) {
-      const img = document.createElement('img');
-      img.src = su;
-      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit';
-      img.loading = 'lazy';
-      tile.appendChild(img);
-    }
-
-    // LIVE badge
-    const lb = document.createElement('div');
-    lb.style.cssText = 'position:absolute;top:7px;left:7px;background:var(--pink);color:#fff;font-family:var(--font-d);font-size:9px;font-weight:900;padding:2px 7px;border-radius:100px;letter-spacing:.8px';
-    lb.textContent = 'LIVE';
-    tile.appendChild(lb);
-
-    // Name + viewer count overlay
-    const info = document.createElement('div');
-    info.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,.8),transparent);padding:22px 8px 6px;';
-    info.innerHTML = `<div style="font-family:var(--font-d);font-size:12px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.username}</div>${m.viewersCount?`<div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:1px">👁 ${fmt(m.viewersCount)}</div>`:''}`;
-    tile.appendChild(info);
-
-    tile.addEventListener('click', () => { closeMG(); openPV(m); });
-    grid.appendChild(tile);
-  });
-}
 
 
 // ══════════════════════════════════════
