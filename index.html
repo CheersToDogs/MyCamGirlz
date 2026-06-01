@@ -399,7 +399,7 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
   <div id="gp">
     <button class="gp" data-n="1">1×1 ⭐</button>
     <button class="gp on" data-n="2">2×2</button>
-    <button class="gp" data-n="3">3×3 ✨</button>
+    <button class="gp" data-n="3">3×3</button>
     <button class="gp" data-n="4">4×4 ✨</button>
     <button class="gp" data-n="6">6×6 ✨</button>
   </div>
@@ -1348,6 +1348,7 @@ function onLogin(user) {
   document.getElementById('menu-email').textContent = user.email;
   document.getElementById('menu-tier').textContent = user.tier === 'paid' ? '⭐ Premium' : '🆓 Free';
   A.identify(user);
+  updateGridButtons();
   // Show set-password option for paid users
   const spw = document.getElementById('menu-setpw-wrap');
   if (spw) spw.style.display = user.tier === 'paid' ? 'block' : 'none';
@@ -1363,8 +1364,24 @@ function gridLimit() {
 
 function maxGridN() {
   if (S.paid) return 6;
-  if (S.user) return 3;   // free: up to 3x3 but shows signup tiles after 8
+  if (S.user) return 3;   // free: up to 3x3
   return 3;               // anon: 3-col preview grid
+}
+
+function updateGridButtons() {
+  // Visually reflect which grid sizes are available for current tier
+  const max = maxGridN();
+  document.querySelectorAll('.gp[data-n]').forEach(btn => {
+    const n = parseInt(btn.dataset.n);
+    const locked = n > max && n > 1;
+    btn.style.opacity = locked ? '0.45' : '';
+    btn.style.cursor  = locked ? 'not-allowed' : '';
+    // Label: free = clean, paid-only = sparkle
+    if (n >= 4) btn.innerHTML = n === 6 ? '6×6 ⭐' : `${n}×${n} ⭐`;
+    if (n === 3) btn.textContent = '3×3';
+    if (n === 2) btn.textContent = '2×2';
+    if (n === 1) btn.textContent = '1×1 ⭐';
+  });
 }
 
 // ══════════════════════════════════════
@@ -1902,6 +1919,7 @@ applyGridLayout();
 })();
 // Always load — age gate is a visual overlay only, doesn't block JS
 load();
+updateGridButtons();
 A.track('start',{variant:V.id,ref:document.referrer});
 window.addEventListener('beforeunload',()=>A.track('session_end',{
   dur_secs: Math.floor((Date.now()-S.t0)/1000),
