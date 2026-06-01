@@ -328,28 +328,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .mgm-signup{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:12px;font-weight:800;padding:8px 20px;border:none;border-radius:var(--rp);cursor:pointer;box-shadow:0 2px 12px rgba(255,62,138,.4);transition:all .15s}
 .mgm-signup:hover{filter:brightness(1.1)}
 
-/* GRID: 2x2 fills viewport */
-@media(min-width:769px){
-  /* 2x2 tiles fill viewport using aspect-ratio trick — scroll still works below */
-  #grid[data-n="2"] .tile{aspect-ratio:unset}
-  #grid[data-n="2"]{
-    grid-template-columns:repeat(2,1fr);
-    grid-template-rows:repeat(2,calc((100vh - 54px - 40px - 36px - 2px) / 2));
-    gap:0;
-  }
-  #grid[data-n="2"] .tile{border-radius:0;border:none;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
-  #gw[data-fullgrid="true"]{padding:0}
-}
-@media(max-width:768px) and (orientation:landscape){
-  #grid[data-n="2"] .tile{aspect-ratio:unset}
-  #grid[data-n="2"]{
-    grid-template-columns:repeat(2,1fr);
-    grid-template-rows:repeat(2,calc((100vh - 54px - 36px) / 2));
-    gap:0;
-  }
-  #grid[data-n="2"] .tile{border-radius:0}
-  #gw[data-fullgrid="true"]{padding:0}
-}
+/* GRID: 2x2 uses standard aspect-ratio layout */
 
 </style>
 <script>
@@ -1958,16 +1937,9 @@ async function renderMG() {
 // 2x2 VIEWPORT FILL
 // ══════════════════════════════════════
 function applyGridLayout() {
-  const gw   = document.getElementById('gw');
   const grid = document.getElementById('grid');
-  // Anon grid is always 3 cols regardless of S.n — prevent 2x2 fullscreen CSS
   const effectiveN = (!S.user && !S.paid) ? 3 : S.n;
   grid.dataset.n = effectiveN;
-  if (effectiveN === 2) {
-    gw.dataset.fullgrid = 'true';
-  } else {
-    gw.dataset.fullgrid = 'false';
-  }
 }
 
 // ── INIT ───────────────────────────────────────────────
