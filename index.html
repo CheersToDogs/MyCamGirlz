@@ -1952,10 +1952,12 @@ async function renderMG() {
 // 2x2 VIEWPORT FILL
 // ══════════════════════════════════════
 function applyGridLayout() {
-  const gw = document.getElementById('gw');
+  const gw   = document.getElementById('gw');
   const grid = document.getElementById('grid');
-  grid.dataset.n = S.n;
-  if (S.n === 2) {
+  // Anon grid is always 3 cols regardless of S.n — prevent 2x2 fullscreen CSS
+  const effectiveN = (!S.user && !S.paid) ? 3 : S.n;
+  grid.dataset.n = effectiveN;
+  if (effectiveN === 2) {
     gw.dataset.fullgrid = 'true';
   } else {
     gw.dataset.fullgrid = 'false';
