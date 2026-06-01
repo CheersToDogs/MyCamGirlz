@@ -358,6 +358,7 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
   api_host: 'https://us.i.posthog.com',
   person_profiles: 'identified_only',
   autocapture: false,
+  opt_out_capturing_by_default: false,
   capture_pageview: true,
   capture_pageleave: true,
   session_recording: {
@@ -376,7 +377,7 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
     <span class="ag-icon">🔞</span>
     <div class="ag-title">Adults Only — 18+</div>
     <div class="ag-sub">This website contains adult content including nudity and sexually explicit material. You must be at least 18 years of age to enter.</div>
-    <button class="ag-yes" id="ag-enter">I am 18 or older — Enter</button>
+    <button class="ag-yes ph-no-capture" id="ag-enter" onclick="document.getElementById('agegate').style.display='none';try{localStorage.setItem('mcg_age','1')}catch(e){}">I am 18 or older — Enter</button>
     <a href="https://google.com" class="ag-no">I am under 18 — Exit</a>
     <div class="ag-legal">By entering you confirm you are 18+ and agree to our <a href="#" onclick="showLegal('tos');return false">Terms of Service</a> and <a href="#" onclick="showLegal('privacy');return false">Privacy Policy</a>. All models are 18+ and have consented to appear on this site.</div>
     <div class="ag-state-notice">
@@ -687,8 +688,10 @@ function checkAgeGate() {
 }
 
 document.getElementById('ag-enter').addEventListener('click', () => {
-  localStorage.setItem(AG_KEY, '1');
-  document.getElementById('agegate').classList.add('gone');
+  try { localStorage.setItem(AG_KEY, '1'); } catch(e) {}
+  const ag = document.getElementById('agegate');
+  ag.style.display = 'none';
+  ag.classList.add('gone');
 });
 
 // ── VARIANT CONFIG ─────────────────────────────────────
