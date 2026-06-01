@@ -352,6 +352,20 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 }
 
 </style>
+<script>
+!function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]);t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+" (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
+  api_host: 'https://us.i.posthog.com',
+  person_profiles: 'identified_only',
+  autocapture: false,
+  capture_pageview: true,
+  capture_pageleave: true,
+  session_recording: {
+    maskAllInputs: true,
+    maskInputOptions: { password: true, email: true }
+  }
+});
+</script>
 </head>
 <body>
 
@@ -618,9 +632,9 @@ const LEGAL = {
       <h2>2. How We Use Information</h2>
       <p>We use collected information to: provide and improve the Service; process payments; enforce our Terms of Service; prevent fraud; send service-related communications.</p>
       <h2>3. Cookies</h2>
-      <p>We use cookies and local storage to maintain your session state, remember your preferences, and enforce free-tier limits. We do not use third-party advertising cookies.</p>
+      <p>We use cookies and local storage to maintain your session state, remember your preferences, and enforce free-tier limits. We use PostHog for product analytics and session recording; PostHog data is anonymized and does not include payment or explicit personal information. We do not use third-party advertising cookies.</p>
       <h2>4. Data Sharing</h2>
-      <p>We do not sell your personal data. We share data only with: payment processors (CCBill/Segpay) as necessary to process transactions; analytics providers (self-hosted); and law enforcement when legally required.</p>
+      <p>We do not sell your personal data. We share data only with: payment processors (CCBill/Segpay) as necessary to process transactions; PostHog Inc. (analytics and session replay, posthog.com) which receives anonymized usage events; and law enforcement when legally required.</p>
       <h2>5. Data Retention</h2>
       <p>Session data is retained for 90 days. Account data is retained for the duration of your subscription plus 30 days following cancellation.</p>
       <h2>6. Your Rights</h2>
@@ -710,10 +724,24 @@ const aurl = u => AFF.id
 
 // ── ANALYTICS ──────────────────────────────────────────
 const A = {
-  ep: null,
   track(ev, p={}) {
-    const d = {event:ev,variant:V.id,fp:S.fp,tier:S.paid?'paid':'free',ts:Date.now(),...p};
-    if (this.ep) fetch(this.ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d),keepalive:true}).catch(()=>{});
+    if (typeof posthog === 'undefined') return;
+    const props = {
+      variant: V.id,
+      fp: S.fp,
+      tier: S.paid ? 'paid' : (S.user ? 'free' : 'anon'),
+      rv: parseInt(localStorage.getItem('mcg_rv')||'0'),
+      ...p
+    };
+    posthog.capture(ev, props);
+  },
+  identify(user) {
+    if (typeof posthog === 'undefined') return;
+    posthog.identify(user.id.toString(), {
+      email: user.email,
+      tier: user.tier,
+      rv: parseInt(localStorage.getItem('mcg_rv')||'0')
+    });
   }
 };
 
@@ -886,7 +914,36 @@ function startAnonRotation() {
   scheduleNext();
 }
 
-// ── TIMER PILL DRAG ────────────────────────────────────
+// ── SCROLL DEPTH TRACKING ─────────────────────────────
+// Track how far down the grid users scroll — key signal for 3x5 design
+(function() {
+  const depths = [25, 50, 75, 100];
+  const fired = new Set();
+  const gw = document.getElementById('gw');
+  if (!gw) return;
+  gw.addEventListener('scroll', () => {
+    const pct = Math.floor((gw.scrollTop / Math.max(1, gw.scrollHeight - gw.clientHeight)) * 100);
+    depths.forEach(d => {
+      if (pct >= d && !fired.has(d)) {
+        fired.add(d);
+        A.track('scroll_depth', { pct: d, tier: S.paid?'paid':(S.user?'free':'anon') });
+      }
+    });
+  }, { passive: true });
+})();
+
+// ── MODEL WATCH TIME ──────────────────────────────────
+// Track how long each model's stream is actively playing
+const _watchStart = {};
+function trackWatchStart(username) {
+  _watchStart[username] = Date.now();
+}
+function trackWatchEnd(username) {
+  if (!_watchStart[username]) return;
+  const secs = Math.floor((Date.now() - _watchStart[username]) / 1000);
+  if (secs >= 3) A.track('watch_time', { u: username, secs, tier: S.paid?'paid':(S.user?'free':'anon') });
+  delete _watchStart[username];
+}
 (function(){
   const wrap = document.getElementById('tpill-wrap');
   let dragging=false, ox=0, oy=0, sx=0, sy=0;
@@ -973,7 +1030,12 @@ function showPW(trig) {
 }
 
 // ── HLS ────────────────────────────────────────────────
-function destroyAll() { Object.values(S.hls).forEach(h=>{try{h.destroy()}catch(e){}}); S.hls={}; S.at=null; }
+function destroyAll() {
+  // Flush any active watch time before destroying
+  Object.keys(_watchStart).forEach(u => trackWatchEnd(u));
+  Object.values(S.hls).forEach(h=>{try{h.destroy()}catch(e){}});
+  S.hls={}; S.at=null;
+}
 function haltAll() { document.querySelectorAll('#grid video').forEach(v=>v.pause()); }
 function resumeAll() { document.querySelectorAll('#grid video').forEach(v=>v.play().catch(()=>{})); }
 function getUrl(m) { const u=m.stream&&m.stream.urls; if(!u) return null; return u.original||u['720p']||u['480p']||u['240p']||null; }
@@ -1012,7 +1074,7 @@ function makeTile(m) {
   if (S.favorites.has(m.username)) fb.classList.add('on');
   fb.addEventListener('click', e => { e.stopPropagation(); toggleFavorite(m.username, fb); });
   tile.appendChild(fb);
-  tile.addEventListener('click',()=>{if(S.cd){showPW('tile');return;} trackInteraction('tile'); openPV(m); A.track('tile_click',{u:m.username,vc:m.viewersCount});});
+  tile.addEventListener('click',()=>{if(S.cd){showPW('tile');return;} trackInteraction('tile'); trackWatchStart(m.username); openPV(m); A.track('tile_click',{u:m.username,vc:m.viewersCount});});
   S.ws[m.username]=0;
   const wi=setInterval(()=>{if(!S.paused&&!S.cd)S.ws[m.username]++;},1000); tile._wi=wi;
   const url=getUrl(m);
@@ -1285,6 +1347,7 @@ function onLogin(user) {
   document.getElementById('login-btn').style.display = 'none';
   document.getElementById('menu-email').textContent = user.email;
   document.getElementById('menu-tier').textContent = user.tier === 'paid' ? '⭐ Premium' : '🆓 Free';
+  A.identify(user);
   // Show set-password option for paid users
   const spw = document.getElementById('menu-setpw-wrap');
   if (spw) spw.style.display = user.tier === 'paid' ? 'block' : 'none';
@@ -1840,7 +1903,15 @@ applyGridLayout();
 // Always load — age gate is a visual overlay only, doesn't block JS
 load();
 A.track('start',{variant:V.id,ref:document.referrer});
-window.addEventListener('beforeunload',()=>A.track('end',{dur:Math.floor((Date.now()-S.t0)/1000),w:S.ws}));
+window.addEventListener('beforeunload',()=>A.track('session_end',{
+  dur_secs: Math.floor((Date.now()-S.t0)/1000),
+  streams_watched: S.ws||0,
+  interactions: S.ix||0,
+  timer_started: S.ta,
+  converted: !!S.user,
+  tier: S.paid?'paid':(S.user?'free':'anon'),
+  rv: parseInt(localStorage.getItem('mcg_rv')||'0')
+}));
 </script>
 </body>
 </html>
