@@ -1184,9 +1184,8 @@ function renderGrid(ms) {
     initScrollPreview();
     startAnonRotation();
   } else if (S.user && !S.paid) {
-    // Free: show paid upsell tiles if grid has gaps
-    const needed = (S.n * S.n) - ms.length;
-    for (let i = 0; i < Math.max(0, needed); i++) g.appendChild(makeSignupTile('paid'));
+    // Free: always one "Keep Watching" CTA tile as the last slot
+    g.appendChild(makeKeepWatchingTile());
   }
 
   applyGridLayout();
@@ -1358,7 +1357,7 @@ function onLogin(user) {
 
 function gridLimit() {
   if (S.paid) return 36;
-  if (S.user) return 8;   // free account
+  if (S.user) return Math.max(1, S.n * S.n - 1);  // free: full grid minus CTA tile
   return 15;              // anonymous: 3x5 preview grid
 }
 
@@ -1603,6 +1602,38 @@ function makeLockedTile(idx) {
 // ══════════════════════════════════════
 // SIGNUP UPSELL TILES
 // ══════════════════════════════════════
+function makeKeepWatchingTile() {
+  const tile = document.createElement('div');
+  tile.className = 'tile keep-watching-tile';
+  tile.style.cursor = 'pointer';
+
+  // Use the next model thumbnail as background — show what they're missing
+  const nextModel = S.models[Math.max(1, S.n * S.n - 1)] || S.models[0];
+  if (nextModel) {
+    const su = nextModel.snapshotUrl || nextModel.widgetPreviewUrl || '';
+    if (su) {
+      tile.style.backgroundImage = `url(${su})`;
+      tile.style.backgroundSize = 'cover';
+      tile.style.backgroundPosition = 'center';
+    }
+  }
+
+  tile.innerHTML = `
+    <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(10,6,18,.92) 0%,rgba(10,6,18,.5) 50%,transparent 100%);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:14px;text-align:center">
+      <div style="font-size:18px;margin-bottom:6px">⭐</div>
+      <div style="font-family:var(--font-d);font-size:13px;font-weight:900;color:#fff;margin-bottom:4px;line-height:1.2">Keep Watching</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.65);margin-bottom:10px">36 streams · no timer · all filters</div>
+      <button style="background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;font-family:var(--font-d);font-size:11px;font-weight:800;padding:6px 16px;border:none;border-radius:var(--rp);cursor:pointer;box-shadow:0 2px 12px rgba(255,62,138,.4)">$9.99/mo →</button>
+    </div>
+  `;
+
+  tile.addEventListener('click', () => {
+    showPW('keep_watching_tile');
+    A.track('keep_watching_click', { grid: S.n });
+  });
+  return tile;
+}
+
 function makeSignupTile(type) {
   const tile = document.createElement('div');
   tile.className = 'signup-tile';
