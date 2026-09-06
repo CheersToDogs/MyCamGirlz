@@ -48,13 +48,33 @@ python3 /tmp/script.py
 **Never PowerShell** — injects BOM that silently breaks JS.
 
 ### Syntax check before every push
+
+**Backend (`auth_api.py`):**
 ```bash
 python3 -c "import ast; ast.parse(open('auth_api.py').read()); print('OK')"
 ```
 
+**Frontend (`index.html`) — browser-accurate, MANDATORY.** Extract every inline `<script>` and compile each as a *classic script* (the same parser mode a `<script>` tag uses):
+```bash
+python3 - << 'PY'
+import re
+html=open('index.html',encoding='utf-8').read()
+for i,b in enumerate(re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>',html,re.S)):
+    open(f'/tmp/blk{i}.js','w',encoding='utf-8').write(b)
+PY
+for f in /tmp/blk*.js; do
+  node -e "new (require('vm').Script)(require('fs').readFileSync('$f','utf8'))" && echo "$f OK" || { echo "$f PARSE FAIL"; exit 1; }
+done
+```
+**Why `vm.Script` and NOT `node --check`:** `node --check` parses leniently and PASSED a top-level `await` that the browser rejected as a SyntaxError — the entire script died and the grid went blank (fixed in `ddbf4f3`). `vm.Script` compiles as a classic script and throws on exactly what a `<script>` tag would. Never trust `node --check` alone for inline browser JS. (`node --check` also returns a false OK because Node tolerates top-level await that classic scripts forbid.)
+
+**Ground truth = a real browser.** For "it deploys but renders wrong," run the Playwright diagnostic from a residential box (`C:\Users\kb\bf_scraper\diag_mcg.py`): it reports tile count, computed grid columns, `pageerror`s, and console output. Static checks cannot see runtime state.
+
 ---
 
 ## Git Protocol
+
+**Working push path:** Ken's Windows repo `C:\Users\kb\Projects\MyCamGirlz` — `git add index.html && git commit -m "..." && git push`. Credential Manager supplies auth; **no token needed**. (This is how `ddbf4f3` shipped.) The token method below is the alternate for container-side pushes only.
 
 ```bash
 TOKEN="ghp_..."  # ask Ken for current token — do not store in repo
