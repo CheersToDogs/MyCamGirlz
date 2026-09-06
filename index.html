@@ -1913,17 +1913,6 @@ async function renderMG() {
   });
 }
 
-  // Fetch 50 models independently of current tier/filter
-  let pool = S.models.length >= 50 ? S.models : [];
-  if (!pool.length) {
-    try {
-      const f = S.f;
-      const p = new URLSearchParams({limit:'200',sortBy:'viewersCount',gender:f.gender});
-      const r = await fetch(`https://go.stripchat.com/api/models?${p}`);
-      const d = await r.json();
-      pool = (d.models||d.data||[]).filter(m=>m.status==='public'&&m.stream&&m.stream.urls);
-    } catch(e) { pool = S.models; }
-  }
 
 
 
