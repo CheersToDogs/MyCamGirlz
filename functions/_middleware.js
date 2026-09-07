@@ -82,6 +82,13 @@ export async function onRequest(context) {
     return next();
   }
 
+  // Legal/compliance pages must stay reachable everywhere (incl. AV-blocked states)
+  const LEGAL_PATHS = new Set(['/terms','/privacy','/refund','/2257','/dmca','/contact']);
+  const legalPath = url.pathname.replace(/\.html$/, '').replace(/\/$/, '') || '/';
+  if (LEGAL_PATHS.has(legalPath)) {
+    return next();
+  }
+
   const cf = request.cf || {};
   const country = cf.country || '';
   const regionCode = cf.regionCode || '';

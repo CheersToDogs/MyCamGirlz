@@ -218,18 +218,6 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 #footer a:hover{color:var(--text2)}
 #footer .fsep{color:var(--text3);font-size:10px}
 
-/* LEGAL PAGES */
-#legal-overlay{display:none;position:fixed;inset:0;z-index:99999;background:rgba(8,5,14,.97);overflow-y:auto;padding:40px 20px}
-#legal-overlay.show{display:block}
-.lp-wrap{max-width:720px;margin:0 auto}
-.lp-close{background:var(--surface);border:1px solid var(--border);color:var(--text2);font-size:12px;padding:8px 16px;border-radius:var(--rsm);cursor:pointer;margin-bottom:24px;transition:all .15s}
-.lp-close:hover{border-color:var(--pink-soft);color:var(--pink-soft)}
-.lp-title{font-family:var(--font-d);font-size:24px;font-weight:900;margin-bottom:8px}
-.lp-date{font-size:12px;color:var(--text3);margin-bottom:28px}
-.lp-body{font-size:13px;color:var(--text2);line-height:1.8}
-.lp-body h2{font-family:var(--font-d);font-size:16px;font-weight:800;color:var(--text);margin:24px 0 8px}
-.lp-body p{margin-bottom:12px}
-.lp-body a{color:var(--pink-soft)}
 
 /* adjust app height for footer */
 #app{height:calc(100vh - 54px - 40px - 36px)}
@@ -358,7 +346,7 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
     <div class="ag-sub">This website contains adult content including nudity and sexually explicit material. You must be at least 18 years of age to enter.</div>
     <button class="ag-yes ph-no-capture" id="ag-enter" onclick="document.getElementById('agegate').style.display='none';try{localStorage.setItem('mcg_age','1')}catch(e){}">I am 18 or older — Enter</button>
     <a href="https://google.com" class="ag-no">I am under 18 — Exit</a>
-    <div class="ag-legal">By entering you confirm you are 18+ and agree to our <a href="#" onclick="showLegal('tos');return false">Terms of Service</a> and <a href="#" onclick="showLegal('privacy');return false">Privacy Policy</a>. All models are 18+ and have consented to appear on this site.</div>
+    <div class="ag-legal">By entering you confirm you are 18+ and agree to our <a href="/terms" target="_blank" rel="noopener">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>. All models are 18+ and have consented to appear on this site.</div>
     <div class="ag-state-notice">
       <span class="ag-state-icon">🚫</span>
       We do not currently serve residents of AL, AR, AZ, FL, GA, ID, IN, KS, KY, LA, MS, MT, NC, ND, NE, OH, OK, SC, SD, TN, TX, UT, VA, or WY due to local age verification laws.
@@ -448,15 +436,19 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
 
 <!-- FOOTER -->
 <div id="footer">
-  <a href="#" onclick="showLegal('tos');return false">Terms of Service</a>
-  <span class="fsep">·</span>
-  <a href="#" onclick="showLegal('privacy');return false">Privacy Policy</a>
-  <span class="fsep">·</span>
-  <a href="#" onclick="showLegal('2257');return false">18 U.S.C. 2257</a>
-  <span class="fsep">·</span>
-  <a href="mailto:support@mycamgirlz.com">Support</a>
-  <span class="fsep">·</span>
-  <span style="font-size:10px;color:var(--text3)">© 2026 MyCamGirlz. All models are 18+.</span>
+  <a href="/terms" target="_blank" rel="noopener">Terms</a>
+  <span class="fsep">&middot;</span>
+  <a href="/privacy" target="_blank" rel="noopener">Privacy</a>
+  <span class="fsep">&middot;</span>
+  <a href="/refund" target="_blank" rel="noopener">Refunds</a>
+  <span class="fsep">&middot;</span>
+  <a href="/2257" target="_blank" rel="noopener">2257</a>
+  <span class="fsep">&middot;</span>
+  <a href="/dmca" target="_blank" rel="noopener">DMCA</a>
+  <span class="fsep">&middot;</span>
+  <a href="/contact" target="_blank" rel="noopener">Contact</a>
+  <span class="fsep">&middot;</span>
+  <span style="font-size:10px;color:var(--text3)">&copy; 2026 Vertical USA LLC &middot; 18+</span>
 </div>
 
 
@@ -488,7 +480,7 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
         <a href="#" id="am-ml-toggle" style="color:var(--pink-soft);text-decoration:none;font-weight:600">← Use magic link instead</a>
       </div>
     </div>
-    <div style="font-size:10px;color:var(--text3);margin-top:14px;line-height:1.6">By signing up you agree to our <a href="#" onclick="showLegal('tos');return false" style="color:var(--text2)">Terms</a> and <a href="#" onclick="showLegal('privacy');return false" style="color:var(--text2)">Privacy Policy</a>. Adults 18+ only.</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:14px;line-height:1.6">By signing up you agree to our <a href="/terms" target="_blank" rel="noopener" style="color:var(--text2)">Terms</a> and <a href="/privacy" target="_blank" rel="noopener" style="color:var(--text2)">Privacy Policy</a>. Adults 18+ only.</div>
   </div>
 </div>
 
@@ -546,15 +538,6 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
   </div>
 </div>
 
-<!-- LEGAL OVERLAY -->
-<div id="legal-overlay">
-  <div class="lp-wrap">
-    <button class="lp-close" onclick="hideLegal()">← Back</button>
-    <div class="lp-title" id="lp-title"></div>
-    <div class="lp-date">Last updated: April 7, 2026</div>
-    <div class="lp-body" id="lp-body"></div>
-  </div>
-</div>
 
 
 <!-- SEE WHAT YOU'RE MISSING PILL -->
@@ -580,81 +563,6 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
 
 <script>
 'use strict';
-
-// ── LEGAL CONTENT ──────────────────────────────────────
-const LEGAL = {
-  tos: {
-    title: 'Terms of Service',
-    body: `
-      <h2>1. Acceptance of Terms</h2>
-      <p>By accessing MyCamGirlz ("the Site"), you confirm that you are at least 18 years of age and agree to be bound by these Terms of Service. If you do not agree, you must leave immediately.</p>
-      <h2>2. Age Verification</h2>
-      <p>This site contains sexually explicit material. Access is restricted to adults 18 years of age or older (or the age of majority in your jurisdiction, whichever is greater). By entering, you represent and warrant that you are of legal age.</p>
-      <h2>3. Content</h2>
-      <p>MyCamGirlz aggregates live streams from third-party cam platforms. All models appearing on this site are 18 years of age or older and have consented to appear. MyCamGirlz does not produce, host, or control the content of third-party streams.</p>
-      <h2>4. Prohibited Use</h2>
-      <p>You agree not to use the Site to: (a) record, download, or redistribute streamed content; (b) harass models or other users; (c) circumvent access controls; (d) use automated tools to scrape the Site.</p>
-      <h2>5. Subscriptions</h2>
-      <p>Paid subscriptions are billed monthly. You may cancel at any time. Refunds are not provided for partial billing periods. Payment processing is handled by third-party processors; we do not store payment card data.</p>
-      <h2>6. Disclaimer</h2>
-      <p>The Site is provided "as is" without warranties of any kind. We do not guarantee uninterrupted access to streams. We are not responsible for the content of third-party platforms.</p>
-      <h2>7. Governing Law</h2>
-      <p>These Terms are governed by the laws of the State of Wyoming, USA. Any disputes shall be resolved in the courts of Wyoming.</p>
-      <h2>8. Contact</h2>
-      <p>For questions regarding these Terms, contact <a href="mailto:legal@mycamgirlz.com">legal@mycamgirlz.com</a>.</p>
-    `
-  },
-  privacy: {
-    title: 'Privacy Policy',
-    body: `
-      <h2>1. Information We Collect</h2>
-      <p>We collect: (a) information you provide when subscribing (email address, billing information processed by our payment processor); (b) automatically collected data including IP address, browser type, device fingerprint, and usage analytics.</p>
-      <h2>2. How We Use Information</h2>
-      <p>We use collected information to: provide and improve the Service; process payments; enforce our Terms of Service; prevent fraud; send service-related communications.</p>
-      <h2>3. Cookies</h2>
-      <p>We use cookies and local storage to maintain your session state, remember your preferences, and enforce free-tier limits. We use PostHog for product analytics and session recording; PostHog data is anonymized and does not include payment or explicit personal information. We do not use third-party advertising cookies.</p>
-      <h2>4. Data Sharing</h2>
-      <p>We do not sell your personal data. We share data only with: payment processors (CCBill/Segpay) as necessary to process transactions; PostHog Inc. (analytics and session replay, posthog.com) which receives anonymized usage events; and law enforcement when legally required.</p>
-      <h2>5. Data Retention</h2>
-      <p>Session data is retained for 90 days. Account data is retained for the duration of your subscription plus 30 days following cancellation.</p>
-      <h2>6. Your Rights</h2>
-      <p>You may request deletion of your data by contacting <a href="mailto:privacy@mycamgirlz.com">privacy@mycamgirlz.com</a>. We will respond within 30 days.</p>
-      <h2>7. Security</h2>
-      <p>We use industry-standard security measures including TLS encryption and Cloudflare DDoS protection. We do not store payment card data.</p>
-      <h2>8. Contact</h2>
-      <p>Privacy inquiries: <a href="mailto:privacy@mycamgirlz.com">privacy@mycamgirlz.com</a>.</p>
-    `
-  },
-  '2257': {
-    title: '18 U.S.C. 2257 Compliance Statement',
-    body: `
-      <h2>Exemption Statement</h2>
-      <p>MyCamGirlz is not a producer (primary or secondary) of any of the sexually explicit content displayed on this website as defined in 18 U.S.C. § 2257 and 28 C.F.R. Part 75.</p>
-      <p>MyCamGirlz is a technology platform that displays third-party live streams from external cam platforms. MyCamGirlz does not produce, film, direct, or host any original content.</p>
-      <p>For content appearing on this site, all records required by 18 U.S.C. § 2257 and 28 C.F.R. Part 75 are maintained by the respective content producers. These include:</p>
-      <ul style="margin:12px 0 12px 20px;color:var(--text2)">
-        <li style="margin-bottom:6px">Stripchat / HC Trading Malta Ltd — <a href="https://stripchat.com/docs/2257" target="_blank">stripchat.com/docs/2257</a></li>
-      </ul>
-      <p>All models appearing on this site are 18 years of age or older. Age verification is performed by the originating platforms.</p>
-      <h2>Custodian of Records</h2>
-      <p>For compliance inquiries, contact:<br>
-      MyCamGirlz<br>
-      Email: <a href="mailto:legal@mycamgirlz.com">legal@mycamgirlz.com</a></p>
-    `
-  }
-};
-
-function showLegal(page) {
-  const d = LEGAL[page];
-  if (!d) return;
-  document.getElementById('lp-title').textContent = d.title;
-  document.getElementById('lp-body').innerHTML = d.body;
-  document.getElementById('legal-overlay').classList.add('show');
-}
-
-function hideLegal() {
-  document.getElementById('legal-overlay').classList.remove('show');
-}
 
 // ── AGE GATE ───────────────────────────────────────────
 const AG_KEY = 'mcg_age';
@@ -1331,7 +1239,6 @@ document.getElementById('pvbg').addEventListener('click',()=>document.getElement
 
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
-    hideLegal();
     document.getElementById('pvm').classList.remove('show');
     if(!S.cd) document.getElementById('pwm').classList.remove('show');
     document.getElementById('auth-modal').classList.remove('show');
