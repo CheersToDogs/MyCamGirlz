@@ -171,6 +171,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 /* PAYWALL MODAL */
 #pwm{display:none;position:fixed;inset:0;z-index:200;align-items:center;justify-content:center}
 #pwm.show{display:flex}
+#disbtn.hardlock{pointer-events:none;cursor:default}
 .mbg{position:absolute;inset:0;background:rgba(8,5,14,.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .mc{position:relative;z-index:1;background:var(--bg2);border:1px solid rgba(255,62,138,.22);border-radius:20px;padding:42px 38px 34px;max-width:430px;width:90%;text-align:center;box-shadow:0 0 60px rgba(255,62,138,.1),0 0 120px rgba(123,47,255,.07);animation:pop .35s cubic-bezier(.34,1.56,.64,1)}
 @keyframes pop{from{opacity:0;transform:scale(.88) translateY(24px)}to{opacity:1;transform:scale(1) translateY(0)}}
@@ -910,10 +911,12 @@ function expireT() {
 function tickCD() {
   const clk=document.getElementById('rclk'),inl=document.getElementById('rcinl');
   document.getElementById('cdl').style.display='block';
+  { const _db=document.getElementById('disbtn'); if(_db) _db.classList.add('hardlock'); }
   const t = () => {
     if (S.cds<=0) {
       // Cooldown over: escalate the next one, re-render fresh streams, grant a SHORT bonus
       S.cd=false; S.ta=false; S.cyc=(S.cyc||0)+1;
+      { const _db=document.getElementById('disbtn'); if(_db) _db.classList.remove('hardlock'); }
       document.getElementById('pwm').classList.remove('show');
       document.getElementById('cdl').style.display='none';
       document.querySelectorAll('.tile').forEach(t=>t.classList.remove('bl'));
@@ -954,6 +957,7 @@ function showPW(trig) {
   document.querySelector('#pwm .msub').innerHTML   = c.sub;
   q('subbtn').innerHTML = c.cta;
   q('disbtn').innerHTML = c.dis;
+  q('disbtn').classList.toggle('hardlock', !!S.cd);
   q('cdl').style.display = (k==='premium') ? 'none' : '';
   q('mpn').textContent=V.price.toFixed(2);
   q('ctap').textContent=V.price.toFixed(2);
@@ -1232,7 +1236,7 @@ document.getElementById('subbtn').addEventListener('click',()=>{
   }
   window.open(CCBILL_URL, '_blank', 'noopener');
 });
-document.getElementById('disbtn').addEventListener('click',()=>{if(!S.cd)document.getElementById('pwm').classList.remove('show');A.track('dismiss');});
+document.getElementById('disbtn').addEventListener('click',()=>{if(!S.cd)document.getElementById('pwm').classList.remove('show');});
 document.getElementById('pwbg').addEventListener('click',()=>{if(!S.cd)document.getElementById('pwm').classList.remove('show');});
 document.getElementById('pvcl').addEventListener('click',()=>document.getElementById('pvm').classList.remove('show'));
 document.getElementById('pvbg').addEventListener('click',()=>document.getElementById('pvm').classList.remove('show'));
