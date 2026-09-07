@@ -3,7 +3,7 @@
 **This file is the single source of truth for what is measured and how it is read.** Every `A.track()` event in `index.html` is listed here. If it isn't here, it isn't canon. (Discipline rules live in RULES.md.)
 
 ## Stack
-- **PostHog** (project token `phc_vAPm…` — a public client-side token, safe in this repo). `posthog.init` runs in the first inline `<script>`; `autocapture` + `capture_pageview` are on.
+- **PostHog** (project token `phc_vAPm…` — a public client-side token, safe in this repo). `posthog.init` runs in the first inline `<script>` with `person_profiles:'identified_only'`; **autocapture is OFF** — only explicit `A.track` events plus `capture_pageview` + `capture_pageleave` are sent. Events post directly to `us.i.posthog.com` (not reverse-proxied — subject to adblock loss).
 - **Wrapper:** `A.track(event, props)` → `posthog.capture`. It stamps these on **every** event, so never pass them manually:
 
 | auto-prop | meaning |
@@ -15,7 +15,7 @@
 
 - **Identity:** `A.identify(user)` on login → `posthog.identify(user.id, {email, tier, verified})` stitches the `fp` history to the account. Paid conversions must be read on the identified user.
 
-## Event taxonomy (42 events)
+## Event taxonomy
 
 ### Session & lifecycle
 | event | fires when | props |
@@ -57,7 +57,6 @@
 |---|---|---|
 | `paywall` | subscription modal shown | `trig` ∈ `expired` · `grid` · `grid_1x1` · `filter` · `scroll_preview` · `resume` (restored from a live cooldown on reload), `copy` (`V.modal_copy`) |
 | `subscribe` | "Keep My Access" clicked → CCBill | `price` |
-| `dismiss` | paywall dismissed | — |
 | `keep_watching_click` | free-account CTA tile | `grid` |
 | `signup_tile_click` | signup tile | `type` free/paid |
 
@@ -76,7 +75,7 @@
 start → loaded → tile_click / interaction → free_start → expired(cyc=0) → paywall(trig=expired)
    ├─ subscribe ────────────────────────────────────────────────► CCBill → webhook tier=paid
    ├─ email_unlock → magic_link_verified (free account)
-   └─ dismiss / leave → [cooldown 20m+] → reset(cyc=1) → free_start(60s) → expired(cyc=1) → paywall … (escalates)
+   └─ leave / wait → [cooldown 20m+] → reset(cyc=1) → free_start(60s) → expired(cyc=1) → paywall … (escalates)
 ```
 
 ## KPIs — the numbers that matter, and how to build them in PostHog
@@ -109,5 +108,7 @@ start → loaded → tile_click / interaction → free_start → expired(cyc=0) 
 - `AFF.id` is still empty — `cta` measures clicks, not credited Stripcash revenue, until Stripcash approves.
 
 ## Change log
+- 2026-09-07 — **`dismiss` event REMOVED** (retired). The timeout paywall is now a hard wall: during an active cooldown `#disbtn` is `pointer-events:none` and bg-click/Escape are gated, so there is nothing to "dismiss" — the only exits are subscribe or wait out the cooldown. The premium (filter/grid) soft-nudge still closes on "Not now" but no longer emits an event. (commit 500ff0d)
+- 2026-09-07 — Doc accuracy: `autocapture` is OFF (was mis-stated as on); fragile event-count header dropped.
 - 2026-09-06 — Filters premium-gated: new `filter_gate` event, `paywall.trig` gains `filter`. Free preview now top 4 (2×2) / top 9 (3×3), default 3×3.
 - 2026-09-06 — Canon established. `expired` gained `cyc` so bonus-window expiries are separable from first walls (`faeec1f` shipped the lockout loop; this commit makes it measurable).

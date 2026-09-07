@@ -1,8 +1,8 @@
 # MyCamGirlz — Project State
-**Last Updated:** 2026-05-29
+**Last Updated:** 2026-09-07
 **Live URL:** https://mycamgirlz.com
 **Repo:** https://github.com/CheersToDogs/MyCamGirlz (PUBLIC — never commit secrets)
-**Deploy:** git push origin main → Cloudflare Pages auto-deploys (~60s)
+**Deploy:** push from the EC2 working copy `/home/ubuntu/projects/mycamgirlz-web` → SSH remote `git@github-account:CheersToDogs/MyCamGirlz.git` → Cloudflare Pages auto-deploys (~60–80s, no build step). **Do NOT push from the Windows node or a container** — pushes originate on EC2.
 **Auth API:** LIVE at https://auth.mycamgirlz.com → proxied via /api/*
 
 ---
@@ -16,7 +16,7 @@
 
 ---
 
-## CURRENT STATE (2026-05-29)
+## CURRENT STATE (2026-09-07)
 
 ### What's live and working
 - Frontend `index.html` serving at mycamgirlz.com (HTTP 200)
@@ -26,8 +26,10 @@
 - Password login for paid users (PBKDF2-HMAC-SHA256)
 - `/api/health` → `{"ok":true}` ✓
 - `/api/auth/me` → `{"detail":"Not authenticated"}` ✓
-- Geo-blocking: 24 states with active AV laws → HTTP 451 (functions/_middleware.js)
+- Geo-blocking: 24 states with active AV laws → HTTP 451 (functions/_middleware.js); legal paths exempt so Terms/Privacy/etc stay reachable everywhere
 - Age gate with VPN badges (NordVPN/ExpressVPN/Surfshark — placeholder URLs, not yet affiliate)
+- **Compliance pages SHIPPED (commit 0286794):** static Terms / Privacy / Refund / 2257 / DMCA / Contact pages at repo root; age-gate + footer + signup links repointed to them; dead in-app legal overlay removed (kills stale 2257 + legal@/privacy@ bounce mail)
+- **Timeout paywall is a HARD WALL (commit 500ff0d):** during an active cooldown (`S.cd`) the dismiss button is non-interactive (`#disbtn.hardlock` → pointer-events:none) and background-click + Escape are gated — the only exits are subscribe or wait out the cooldown. Premium (filter/grid) soft-nudge keeps its "Not now". The `dismiss` analytics event is retired
 
 ### Conversion mechanics implemented
 - Anon **and** free accounts see the most-popular live streams: **top 4 in 2×2, top 9 in 3×3** (`V.free_tiles` = 9 cap). Lands on 3×3
@@ -72,6 +74,7 @@
 ## PENDING (blocked on business approvals)
 
 - `AFF.id` in index.html is empty — zero affiliate credit until Stripcash ID wired
+- **Stripcash integration plan — JS mode:** wire Stripcash via their JS smartlink/SDK ("JS mode") for attribution/cookies rather than relying solely on static deep-links. Current `aurl(username)` + `AFF.id` static path stays as the placeholder until Stripcash approves; drop in the JS-mode snippet per Stripcash's affiliate docs at integration time
 - `subbtn` (Keep My Access button) has placeholder CCBill URL — swap `CCBILL_URL` constant when approved
 - VPN badge URLs are placeholder — sign up for NordVPN/ExpressVPN/Surfshark affiliate programs
 - SES sends from `noreply@banemedia.com` — add `mycamgirlz.com` SES identity when DNS records added
@@ -82,7 +85,7 @@
 
 - Rate limiting on `/auth/magic` (currently none — SES quota at risk from spam)
 - Admin endpoint to manually upgrade user tier (useful for CCBill testing)
-- PostHog analytics wired (A.ep endpoint = null, events tracked but not sent)
+- **Analytics — partial (see ANALYTICS.md):** client-side PostHog IS wired and sending — `posthog.init` with the live project token at boot, `A.track → posthog.capture` (autocapture off; explicit events + pageview/pageleave only). **UNWIRED:** no server-side revenue event — the CCBill webhook emits no PostHog `purchase`, so `subscribe` (click-intent) is the only conversion signal and true paid revenue is absent from the funnel. Events post direct to `us.i.posthog.com` (not reverse-proxied → adblock loss). (The old `A.ep` custom-endpoint design is gone.)
 - Notification watcher — background process alerts users when favorites go live
 - `POST /auth/set-password` frontend UI (backend exists, no UI yet)
 
@@ -102,7 +105,7 @@
 
 ## KNOWN BUGS / ISSUES
 
-- None currently active
+- **AV geo-block has no WAF backstop (free CF plan):** the state block lives entirely in `functions/_middleware.js` (a Pages Function). The free Cloudflare plan has no custom WAF geo-rules, so there is no edge-level backstop — if the middleware is bypassed or errors, blocked-state traffic is not stopped. Mitigation: keep the middleware fail-closed; move to a paid CF plan with WAF geo-rules before scaling traffic.
 
 ---
 
@@ -110,13 +113,15 @@
 
 ```
 CheersToDogs/MyCamGirlz/
-├── index.html                  ← entire frontend (~1550 lines)
+├── index.html                  ← entire frontend (~1980 lines)
+├── terms.html · privacy.html · refund.html · 2257.html · dmca.html · contact.html   ← compliance pages (commit 0286794)
 ├── functions/
-│   ├── _middleware.js          ← geo-block 24 states (HTTP 451)
+│   ├── _middleware.js          ← geo-block 24 AV states (HTTP 451); LEGAL_PATHS exempt
 │   └── api/
 │       └── [[path]].js         ← proxies /api/* → https://auth.mycamgirlz.com
 ├── PROJECT.md
 ├── ARCH.md
+├── ANALYTICS.md
 └── RULES.md
 ```
 
