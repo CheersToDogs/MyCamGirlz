@@ -1180,7 +1180,7 @@ function normXhl(m){
 async function fetchModels() {
   const f=S.f;
   const p=new URLSearchParams({limit:'60', primaryTag:XHL_PRIMARY[f.gender]||'girls',
-                               sortBy:(f.sort==='viewersCount')?'viewersCount':'stripRanking'});
+                               sortBy:'stripRanking'});
   const groups=xhlGroups(f);
   if(groups.length) p.set('filterGroupTags', JSON.stringify(groups));
   const r=await fetch(`/api/xhl/models?${p}`);
