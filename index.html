@@ -380,8 +380,8 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
     <button class="gp" data-n="1">1×1 ⭐</button>
     <button class="gp on" data-n="2">2×2</button>
     <button class="gp" data-n="3">3×3</button>
-    <button class="gp" data-n="4">4×4 ✨</button>
-    <button class="gp" data-n="6">6×6 ✨</button>
+    <button class="gp" data-n="4">4×4 ⭐</button>
+    <button class="gp" data-n="6">6×6 ⭐</button>
   </div>
   <div class="hdiv"></div>
   <select id="gsel" class="hsel"><option value="female">Women</option><option value="male">Men</option><option value="couple">Couples</option><option value="trans">Trans</option></select>
@@ -674,10 +674,14 @@ document.getElementById('ag-enter').addEventListener('click', () => {
 });
 
 // ── VARIANT CONFIG ─────────────────────────────────────
-const V = {id:'v1',free_minutes:2,reset_hours:3,price:9.99,modal_copy:'A',
-  max_anon_grid:2,    // anonymous: 2x2=4 tiles
-  max_free_grid:4,    // free account: scrolls to show 8 total (2x2 + 4 below)
-  max_paid_grid:6,    // paid: 6x6=36
+const V = {id:'v1',price:9.99,modal_copy:'A',
+  free_tiles:5,          // non-paid preview: the 5 most-popular live streams (list is viewer-sorted)
+  max_paid_grid:6,       // paid: 6x6=36
+  // REAL cooldown after the free timer expires (variable-ratio loop: scarcity -> return -> taste -> wall)
+  cooldown_min:20,       // 1st lockout length (minutes)
+  cooldown_step_min:10,  // minutes ADDED each successive lockout (escalating scarcity)
+  cooldown_cap_min:60,   // never longer than this
+  bonus_secs:60,         // viewing granted when a cooldown ends - a taste, not a meal
 };
 // Randomize free timer 90–180s — variable interval schedule (Skinner, 1938)
 // Uncertainty maximizes dopamine; fixed intervals allow habituation
@@ -758,6 +762,7 @@ function loadSess() {
     const r = localStorage.getItem(SK); if (!r) return;
     const d = JSON.parse(r); if (d.fp !== S.fp) return;
     S.paid = d.paid || false;
+    S.cyc = d.cyc || 0;
     if (!S.paid) {
       const n = Date.now();
       if (d.cu && d.cu > n) { S.cd=true; S.cds=Math.ceil((d.cu-n)/1000); S.ts=0; }
@@ -768,6 +773,9 @@ function loadSess() {
 
 function saveSess(o={}) {
   const d = {fp:S.fp,paid:S.paid,ts:Date.now()};
+  // carry the cooldown cycle count across saves so escalation survives refresh
+  let prev={}; try{ prev=JSON.parse(localStorage.getItem(SK)||'{}'); }catch(e){}
+  d.cyc = (o.cyc!==undefined) ? o.cyc : (prev.cyc||0);
   if (o.cu) d.cu = o.cu;
   if (o.ex) d.ex = o.ex;
   localStorage.setItem(SK, JSON.stringify(d));
@@ -776,12 +784,12 @@ function saveSess(o={}) {
 
 // ── TIMER ──────────────────────────────────────────────
 let tiv = null;
-function startTimer() {
+function startTimer(secs) {
   if (S.paid||S.ta) return;
   S.ta = true;
-  S.ts = randTimer();
+  S.ts = secs || randTimer();
   const ex = Date.now() + S.ts*1000;
-  saveSess({ex});
+  saveSess({ex, cyc:S.cyc||0});
   markReturnVisitor();
   A.track('free_start',{secs:S.ts});
   tiv = setInterval(tickT, 1000);
@@ -885,10 +893,12 @@ function startAnonRotation() {
   function scheduleNext() {
     const delay = 60000 + Math.floor(Math.random() * 30000); // 60–90s
     rotTiv = setTimeout(() => {
-      if (S.paid || S.user || S.paused) { rotTiv = null; return; }
-      if (S.models.length >= 15) {
-        const shuffled = [...S.models].sort(() => Math.random() - 0.5);
-        renderGrid(shuffled.slice(0, 15));
+      if (S.paid || S.user || S.paused || S.cd) { rotTiv = null; return; }
+      if (S.models.length >= V.free_tiles) {
+        // rotate only within the most-popular pool so the preview stays "most popular"
+        const top = S.models.slice(0, V.free_tiles * 2);
+        const shuffled = [...top].sort(() => Math.random() - 0.5);
+        renderGrid(shuffled.slice(0, V.free_tiles));
       }
       scheduleNext();
     }, delay);
@@ -981,6 +991,12 @@ function expireT() {
     const el = document.getElementById('pw-social');
     if (el) el.textContent = watching.toLocaleString() + '+ members';
   }
+  // Arm a REAL, escalating cooldown. When it ends, tickCD grants a short bonus window.
+  const cyc = S.cyc||0;
+  const mins = Math.min(V.cooldown_min + V.cooldown_step_min*cyc, V.cooldown_cap_min);
+  S.cd=true; S.cds=mins*60; S.ta=false;
+  saveSess({cu: Date.now()+S.cds*1000, cyc});
+  tickCD();
 }
 
 function tickCD() {
@@ -988,10 +1004,12 @@ function tickCD() {
   document.getElementById('cdl').style.display='block';
   const t = () => {
     if (S.cds<=0) {
-      S.cd=false; S.ts=randTimer(); S.ta=false;
+      // Cooldown over: escalate the next one, re-render fresh streams, grant a SHORT bonus
+      S.cd=false; S.ta=false; S.cyc=(S.cyc||0)+1;
       document.getElementById('pwm').classList.remove('show');
+      document.getElementById('cdl').style.display='none';
       document.querySelectorAll('.tile').forEach(t=>t.classList.remove('bl'));
-      resumeAll(); startTimer(); A.track('reset'); return;
+      load(); startTimer(V.bonus_secs); A.track('reset',{cyc:S.cyc,bonus:V.bonus_secs}); return;
     }
     S.cds--;
     const h=Math.floor(S.cds/3600),m=Math.floor((S.cds%3600)/60),s=S.cds%60;
@@ -1006,7 +1024,6 @@ function tickCD() {
 function showPW(trig) {
   document.getElementById('mpn').textContent=V.price.toFixed(2);
   document.getElementById('ctap').textContent=V.price.toFixed(2);
-  const h=document.getElementById('rsinl'); if(h) h.textContent=V.reset_hours+'h';
   document.getElementById('pwm').classList.add('show');
   A.track('paywall',{trig,copy:V.modal_copy});
 }
@@ -1121,6 +1138,7 @@ async function fetchModels() {
 }
 
 async function load() {
+  if (S.cd) return;   // locked out: never re-render playing streams behind the paywall
   showLoading(true); showEmpty(false);
   try {
     const ms=await fetchModels(); S.models=ms;    // Return visitors: shuffle top models slightly for variety
@@ -1220,10 +1238,8 @@ document.getElementById('gp').addEventListener('click',e=>{
   const n=parseInt(b.dataset.n);
   // 1x1 is premium fullscreen — paid only
   if (n === 1 && !S.paid) { showPW('grid_1x1'); A.track('grid_gate',{n,tier:S.user?'free':'anon'}); return; }
-  if(n > maxGridN()) {
-    if (!S.user) { showAuthModal('Unlock bigger grids','Sign up free for up to 3×3. Go premium for up to 6×6.'); A.track('grid_gate',{n,tier:'anon'}); return; }
-    if (!S.paid) { showPW('grid'); A.track('grid_gate',{n,tier:'free'}); return; }
-  }
+  // 4x4 / 6x6 are paid-only for everyone — open the subscription modal
+  if(n > maxGridN() && !S.paid) { showPW('grid'); A.track('grid_gate',{n,tier:S.user?'free':'anon'}); return; }
   document.querySelectorAll('.gp').forEach(x=>x.classList.remove('on')); b.classList.add('on');
   S.n=n; load(); A.track('grid_n',{n});
 });
@@ -1352,8 +1368,7 @@ function onLogin(user) {
 
 function gridLimit() {
   if (S.paid) return 36;
-  if (S.user) return Math.max(1, S.n * S.n - 1);  // free: full grid minus CTA tile
-  return 15;              // anonymous: 3x5 preview grid
+  return V.free_tiles;    // non-paid (anon + free acct): the most-popular streams only
 }
 
 function maxGridN() {
