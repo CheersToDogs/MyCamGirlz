@@ -88,6 +88,18 @@
 
 ---
 
+## ROADMAP / FUTURE (boarded)
+
+### boyfriend.tv (BF) - gay male cams  [boarded 2026-09-06]
+- Pipeline LIVE: residential scraper (Ken box, scheduled ~3min) -> `POST /bf/ingest` (token-gated) -> `GET /bf/models` (~570 live gay cams). Endpoints exist in auth_api.py.
+- Two-track plan: (1) eventually a dedicated "boyz" site for BF. (2) ALSO surface BF here on MyCamGirlz as an opt-in **source pill** - minimal port of the proven LiveGrid pattern (source state + BF toggle + `fetchModels` branch -> `/api/bf/models`, reuse existing tile/HLS + premium-gate; blue heart badge, `aurl()` affiliate). DEFERRED: product/funnel + branding decision before it touches the girls funnel.
+- Alt roster discovered: xHamsterLive SSR `/men/gays` (~147) + `/men/{twinks,daddies,muscular,bisexuals}` = xhl's OWN gay models (different performers than boyfriend.tv), reachable via existing `/xhl/browse`. Candidate complement/backup.
+
+### Filters + grid (shipped 2026-09-06)
+- Category/ethnicity/body/age/tag filtering works via xHamsterLive v1 `filterGroupTags=[["camelCaseTagId"]]` (JSON array-of-arrays; OUTER=AND across groups, INNER=OR within) through `/api/xhl/models`. Verified live: disjoint rosters, AND-combine (asian&bbw ~23). Invalid tag id -> empty (not baseline), so no silent no-ops. Dead id note: `bodyTypeSkinny` returns 0 (slim survives via OR `bodyTypePetite`).
+- Premium-gated for non-subscribers: star (premium) marks on all 6 pulldowns + tag search; apply -> "Hey - those are premium features" $9.99/mo paywall + revert + grid unchanged. Genuinely applies for paid.
+- GRID-EMPTY regression fixed (commit 555aae8): v1 rejects `sortBy=viewersCount|onlineTime|new` (HTTP 400 "invalid sortBy"); always send `stripRanking` (new-sort handled via `autoTagNew` filter group).
+
 ## KNOWN BUGS / ISSUES
 
 - None currently active
