@@ -56,20 +56,22 @@ const S = { ... }        // global state — user, models, HLS instances, timer 
 
 ### Conversion flow (anonymous visitor)
 1. Age gate → localStorage `mcg_age`
-2. Land on 3×5 live grid (15 HLS streams, 3 cols forced)
+2. Land on the 5 most-popular live streams (`V.free_tiles`, 3 cols forced)
 3. First scroll/click → engagement timer starts (90–180s random)
 4. Audio button click → email capture modal (audio gated)
-5. Scroll to row 4 → secondary 45s preview counter (bottom-left pill)
-6. Either timer expires → progressive degradation (video pauses, thumbnails visible, audio continues) → paywall
-7. Email submit → instant free access (magic link sent async)
-8. Paywall: "Keep My Access" → CCBill checkout (CCBILL_URL constant)
+5. Timer expires → progressive degradation (video pauses, thumbnails visible, audio continues) → paywall **with live cooldown countdown**
+6. **Cooldown** (20m, +10m per cycle, cap 60m) → countdown ends → fresh streams + **60s bonus** → back to step 5, escalated
+7. Grid buttons 1×1 / 4×4 / 6×6 → subscription modal (paid-only for all non-paid)
+8. Email submit → free account (magic link async). Paywall "Keep My Access" → CCBill checkout (CCBILL_URL constant)
 
-### Timer system
-- `randTimer()`: returns 90–180 random seconds; return visitors get 25% bonus 1-in-5 visits
-- `attachEngagementTrigger()`: fires `startTimer()` on first scroll/click/mousemove
-- `S.ta`: timer active flag; `S.ts`: seconds remaining
-- Session persisted in localStorage (`mcg_s` key) — timer continues across page refreshes
-- `expireT()`: pauses video, keeps snapshots visible, audio stream continues, shows paywall
+### Timer + cooldown system
+- `randTimer()`: 90–180 random seconds; return visitors get 25% bonus 1-in-5 visits
+- `attachEngagementTrigger()`: fires `startTimer(secs?)` on first scroll/click; `secs` overrides the duration (used for the bonus window)
+- `S.ta` / `S.ts`: timer active / seconds left. `S.cd` / `S.cds`: cooldown active / seconds left. `S.cyc`: lockout cycle count — drives escalation
+- `expireT()`: pauses video, keeps snapshots, audio continues, shows paywall, then **arms the cooldown**: `S.cds = min(cooldown_min + cooldown_step_min*cyc, cooldown_cap_min)*60`, persists `cu`, starts `tickCD()`
+- `tickCD()`: 1s countdown rendered into `#rclk` / `#rcinl`; at 0 → `S.cyc++`, `load()` (fresh streams), `startTimer(V.bonus_secs)`
+- **Lockout integrity:** `load()` returns early while `S.cd`; `startAnonRotation()` is gated on `S.cd`. Nothing playable is ever rendered behind the wall
+- Session in localStorage (`mcg_s`): `ex` (timer end), `cu` (cooldown end), `cyc` — all survive refresh; `loadSess()` restores state and resumes the countdown
 
 ### HLS playback
 - `hls.js` 1.4.12 from CDN

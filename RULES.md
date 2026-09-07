@@ -161,3 +161,13 @@ const AFF = {id:'YOUR_STRIPCASH_ID', campaign:'mycamgirlz'};
 // CCBill approval → swap CCBILL_URL constant:
 const CCBILL_URL = 'https://billing.ccbill.com/jpost/signup.cgi?clientSubacc=...';
 ```
+
+---
+
+## Analytics Canon (ANALYTICS.md)
+
+- **ANALYTICS.md is the single source of truth** for every tracked event, its properties, and the KPIs built on them.
+- Any new `A.track()` call **must** be added to ANALYTICS.md **in the same commit**. No undocumented events.
+- **Never rename an existing event** — it severs PostHog history. Deprecate and add a new one instead.
+- Property keys stay short and stable (`u`, `n`, `trig`, `cyc`, `secs`). Use `A.track()` only — it stamps `variant`, `fp`, `tier`, `rv` on every event, which the KPIs depend on.
+- Changing a `V` knob for an A/B test → bump `V.id` so the variant is separable in PostHog.

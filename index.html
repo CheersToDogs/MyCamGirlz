@@ -980,7 +980,7 @@ function expireT() {
     const vid = S.at.querySelector('video');
     if (vid) { vid.muted = false; vid.play().catch(()=>{}); }
   }
-  A.track('expired',{w:S.ws});
+  A.track('expired',{w:S.ws,cyc:S.cyc||0});
   showPW('expired');
   document.getElementById('email-unlock').classList.add('show');
   document.getElementById('mg-pill').classList.add('show');

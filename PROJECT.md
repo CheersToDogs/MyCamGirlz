@@ -30,23 +30,27 @@
 - Age gate with VPN badges (NordVPN/ExpressVPN/Surfshark — placeholder URLs, not yet affiliate)
 
 ### Conversion mechanics implemented
-- Anon sees 3×5 live grid (15 HLS streams)
+- Anon **and** free accounts see the **5 most-popular** live streams (`V.free_tiles`), 3-col grid
 - Audio gated behind email capture — clicking 🔇 shows email modal
 - Timer: engagement-triggered (not page load), randomized 90–180s, loss framing "X:XX left"
-- Scroll past row 3 → secondary 45s counter (bottom-left pill) → paywall
-- 60–90s random stream rotation (variable interval schedule)
+- 60–90s stream rotation, rotating only within the top-10 so the preview stays "most popular"
 - On timer expiry: videos pause, snapshots visible, active audio stream continues
-- Paywall: semi-transparent (72% opacity, 3px blur) — streams visible behind it
+- **Real, escalating cooldown:** 20 min lockout, +10 min each cycle, cap 60 min. Live countdown in the paywall. Persisted in localStorage — refresh does not clear it
+- **Bonus window:** when a cooldown ends → fresh streams + **60s free** (a taste, not a meal) → wall again. Each cycle the free path costs more waiting while $9.99 stays fixed
+- Lockout is airtight: `load()` and the anon rotation refuse to re-render live streams while locked (previously leaked playable video behind the translucent paywall)
+- Paywall: semi-transparent (72% opacity, 3px blur) — paused streams / thumbnails visible behind it
 - Paywall copy: loss framing + live social proof count
+- **Grid sizes:** 2×2 and 3×3 free; 1×1, 4×4, 6×6 show ⭐ and open the subscription modal for anyone not paid
 - Micro-commitment tracking: tile clicks/audio gate attempts → escalate at 3 and 5 interactions
 - Return visitor: models lightly shuffled, 1-in-5 visits gets 25% bonus timer
+- Every conversion mechanic is instrumented — see **ANALYTICS.md** (the analytics canon)
 
 ### Access tiers
 | Tier | Streams | Grid | Features | Price |
 |---|---|---|---|---|
-| Anonymous | 15 (3×5 preview) | 3-col forced | Thumbnails on locked tiles | Free |
-| Free account | 8 | Up to 3×3 | Audio, favorites, filters | Free + email |
-| Paid | 36 | Up to 6×6 | Everything, no timer | $9.99/mo |
+| Anonymous | 5 most popular | 2×2 / 3×3 (3-col forced) | Timer → escalating cooldown loop | Free |
+| Free account | 5 most popular + "Keep Watching" CTA | 2×2 / 3×3 | Audio, favorites, filters; same timer/cooldown | Free + email |
+| Paid | 36 | Up to 6×6, 1×1 fullscreen | Everything, no timer, no cooldown | $9.99/mo |
 
 ---
 
@@ -127,15 +131,15 @@ EC2 security group: port 8880 open to all 15 Cloudflare IP ranges, port 443 open
 
 ```js
 const V = {
-  id:'v1',
-  free_minutes:2,      // legacy — timer now randomized via randTimer()
-  reset_hours:3,
-  price:9.99,
-  modal_copy:'A',
-  max_anon_grid:2,     // unused — anon locked to 3-col via renderGrid()
-  max_free_grid:4,
-  max_paid_grid:6,
+  id:'v1', price:9.99, modal_copy:'A',
+  free_tiles:5,          // non-paid preview: the 5 most-popular streams
+  max_paid_grid:6,       // paid: 6x6 = 36
+  cooldown_min:20,       // 1st lockout length (minutes)
+  cooldown_step_min:10,  // minutes added per successive lockout (escalation)
+  cooldown_cap_min:60,   // ceiling
+  bonus_secs:60,         // viewing granted when a cooldown ends
 };
+// All V knobs are A/B levers: V.id is stamped on every analytics event (see ANALYTICS.md).
 const AFF = {id:'', campaign:'mycamgirlz'};  // WIRE id WHEN STRIPCASH APPROVES
 const CCBILL_URL = 'https://ccbill.com/PLACEHOLDER';  // SWAP WHEN APPROVED
 ```
