@@ -385,7 +385,7 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
   </div>
   <div class="hdiv"></div>
   <select id="gsel" class="hsel"><option value="female">Women</option><option value="male">Men</option><option value="couple">Couples</option><option value="trans">Trans</option></select>
-  <select id="ssel" class="hsel"><option value="viewersCount">🔥 Viewers</option><option value="onlineTime">⏱ Online Time</option><option value="new">✨ Newest</option></select>
+  <select id="ssel" class="hsel"><option value="viewersCount">🔥 Viewers</option><option value="stripRanking">⭐ Top Rated</option><option value="new">✨ Newest</option></select>
   <select id="csel" class="hsel"><option value="">🌍 Country</option></select>
   <select id="asel" class="hsel"><option value="">Age</option><option value="18-22">18–22</option><option value="23-29">23–29</option><option value="30-39">30–39</option><option value="40+">40+</option></select>
   <select id="bsel" class="hsel"><option value="">Body</option><option value="slim">Slim</option><option value="athletic">Athletic</option><option value="average">Average</option><option value="curvy">Curvy</option><option value="bbw">BBW</option></select>
@@ -1145,20 +1145,52 @@ function openPV(m) {
 function showLoading(v) { document.getElementById('loading-state').classList.toggle('show',v); }
 function showEmpty(v)   { document.getElementById('empty-state').classList.toggle('show',v); }
 
+// ── DATA SOURCE: xHamsterLive front API via AWS proxy (/api/xhl/models -> auth.mycamgirlz.com/xhl/models) ──
+// The only Stripchat-network endpoint with REAL server-side filters. go.stripchat.com ignores every filter and
+// omits age/ethnicity/body fields entirely. Filtering is by TAG ID (camelCase), passed as
+// filterGroupTags = JSON array-of-arrays: OUTER = AND across groups, INNER = OR within a group.
+// Verified live: asian fc=888, ebony fc=709, asian∧bbw fc=22, overlap 0. See ANALYTICS.md / ARCH.md.
+const XHL_PRIMARY = {female:'girls', male:'men', couple:'couples', trans:'trans'};
+const XHL_AGE  = {'18-22':['ageTeen','ageYoung'], '23-29':['ageYoung'], '30-39':['ageMilf'], '40+':['ageMature','ageOld']};
+const XHL_BODY = {slim:['bodyTypeSkinny','bodyTypePetite'], athletic:['bodyTypeAthletic'], average:['bodyTypeMedium'], curvy:['bodyTypeCurvy'], bbw:['bodyTypeBBW']};
+const XHL_ETH  = {white:['ethnicityWhite'], latina:['ethnicityLatino'], asian:['ethnicityAsian'], black:['ethnicityEbony'], 'middle-eastern':['ethnicityMiddleEastern'], indian:['ethnicityIndian']};
+const XHL_TAG  = {squirt:'doSquirt', latina:'ethnicityLatino', asian:'ethnicityAsian', bbw:'bodyTypeBBW', teen:'ageTeen', milf:'ageMilf',
+  bigboobs:'specificsBigTits', blonde:'hairColorBlonde', brunette:'hairColorBrown', redhead:'hairColorRed', lovense:'autoTagInteractiveToy',
+  anal:'doAnal', feet:'doFootFetish', hairy:'specificsHairy', new:'autoTagNew', ebony:'ethnicityEbony', curvy:'bodyTypeCurvy',
+  petite:'bodyTypePetite', tattoo:'specificsTattoos'};
+function xhlGroups(f){
+  const g=[];
+  if(f.age && XHL_AGE[f.age]) g.push(XHL_AGE[f.age]);
+  if(f.body && XHL_BODY[f.body]) g.push(XHL_BODY[f.body]);
+  if(f.ethnicity && XHL_ETH[f.ethnicity]) g.push(XHL_ETH[f.ethnicity]);
+  if(f.tag && XHL_TAG[f.tag]) g.push([XHL_TAG[f.tag]]);
+  if(f.sort==='new') g.push(['autoTagNew']);
+  return g;
+}
+function normXhl(m){
+  // Canonical saawsedge HLS (plain segments; both masters validated live). id === stream id in the HLS path.
+  const id=m.streamName||m.id;
+  m.stream={urls:{original:`https://edge-hls.saawsedge.com/hls/${id}/master/${id}.m3u8`,
+                  '240p':`https://edge-hls.saawsedge.com/hls/${id}/master/${id}_240p.m3u8`}};
+  m.snapshotUrl=m.snapshotUrl||m.previewUrlThumbSmall||'';
+  m.broadcastHD=!!m.isHd;
+  m.status='public';
+  return m;
+}
 async function fetchModels() {
   const f=S.f;
-  const realLimit = gridLimit();
-  const p=new URLSearchParams({limit:'200',sortBy:f.sort,gender:f.gender});
-  if(f.tag) p.set('tag',f.tag);
-  if(f.country) p.set('country',f.country);
-  const r=await fetch(`https://go.stripchat.com/api/models?${p}`);
+  const p=new URLSearchParams({limit:'60', primaryTag:XHL_PRIMARY[f.gender]||'girls',
+                               sortBy:(f.sort==='viewersCount')?'viewersCount':'stripRanking'});
+  const groups=xhlGroups(f);
+  if(groups.length) p.set('filterGroupTags', JSON.stringify(groups));
+  const r=await fetch(`/api/xhl/models?${p}`);
   if(!r.ok) throw new Error(r.status);
   const d=await r.json();
-  let ms=d.models||d.data||[];
-  ms=ms.filter(m=>m.status==='public'&&m.gender===f.gender&&m.stream&&m.stream.urls);
-  if(f.body) ms=ms.filter(m=>(m.bodyType||'').toLowerCase()===f.body);
-  if(f.ethnicity) ms=ms.filter(m=>(m.ethnicity||'').toLowerCase()===f.ethnicity);
-  if(f.age){const[lo,hi]=f.age==='40+'?[40,99]:f.age.split('-').map(Number);ms=ms.filter(m=>m.age>=lo&&m.age<=hi);}
+  let ms=(d.models||[]).filter(m=>(m.isLive||m.isOnline||m.status==='public') && (m.streamName||m.id));
+  ms=ms.map(normXhl);
+  if(f.country) ms=ms.filter(m=>m.country===f.country);                      // country: client-side on real 2-letter field
+  if(f.tag && !XHL_TAG[f.tag]){ const t=f.tag.toLowerCase(); ms=ms.filter(m=>(m.username||'').toLowerCase().includes(t)); } // unknown tag -> name search
+  S.filteredCount = d.filteredCount||ms.length;
   return ms;
 }
 
