@@ -378,8 +378,8 @@ posthog.init('phc_vAPm77kiMjzY2FdsjS7EvCtxi2XVub6wUWQ2mfbN6PbK', {
   <div class="hdiv"></div>
   <div id="gp">
     <button class="gp" data-n="1">1×1 ⭐</button>
-    <button class="gp on" data-n="2">2×2</button>
-    <button class="gp" data-n="3">3×3</button>
+    <button class="gp" data-n="2">2×2</button>
+    <button class="gp on" data-n="3">3×3</button>
     <button class="gp" data-n="4">4×4 ⭐</button>
     <button class="gp" data-n="6">6×6 ⭐</button>
   </div>
@@ -675,7 +675,7 @@ document.getElementById('ag-enter').addEventListener('click', () => {
 
 // ── VARIANT CONFIG ─────────────────────────────────────
 const V = {id:'v1',price:9.99,modal_copy:'A',
-  free_tiles:5,          // non-paid preview: the 5 most-popular live streams (list is viewer-sorted)
+  free_tiles:9,          // non-paid CAP: 3x3 = top 9 most popular, 2x2 = top 4 (list is viewer-sorted)
   max_paid_grid:6,       // paid: 6x6=36
   // REAL cooldown after the free timer expires (variable-ratio loop: scarcity -> return -> taste -> wall)
   cooldown_min:20,       // 1st lockout length (minutes)
@@ -748,7 +748,7 @@ const S = {
   // timer state
   ta:false, ts:0, cd:false, cds:0, ix:0,
   // grid state
-  n:2, models:[], hls:{}, at:null, paused:false,
+  n:3, models:[], hls:{}, at:null, paused:false,
   f:{gender:'female',sort:'viewersCount',country:'',tag:'',age:'',body:'',ethnicity:''},
   ws:{}, t0:Date.now(),
   // favorites
@@ -1014,17 +1014,42 @@ function tickCD() {
     S.cds--;
     const h=Math.floor(S.cds/3600),m=Math.floor((S.cds%3600)/60),s=S.cds%60;
     const str=`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    if(clk) clk.textContent=str;
-    if(inl) inl.textContent=str;
+    const _c=document.getElementById('rclk'), _i=document.getElementById('rcinl');
+    if(_c) _c.textContent=str;
+    if(_i) _i.textContent=str;
     setTimeout(t,1000);
   };
   t();
 }
 
+const PW_COPY = {
+  premium: {
+    badge: '⭐ Premium Feature',
+    title: 'Hey — those are premium features.',
+    sub:   'Filters, tag search and bigger grids are for members. Unlock everything instantly.',
+    cta:   'Unlock Premium — $<span id="ctap">9.99</span>/mo',
+    dis:   'Not now',
+  },
+  expired: {
+    badge: '🔴 Live Now — Don\'t Lose This',
+    title: 'Keep watching.<br>You\'re already in.',
+    sub:   '<span id="pw-social">4,200+ members</span> watching right now. Your free preview ended — keep access instantly.',
+    cta:   'Keep My Access — $<span id="ctap">9.99</span>/mo',
+    dis:   'Free reset in <span id="rcinl">—</span> — or enter email for instant access',
+  },
+};
 function showPW(trig) {
-  document.getElementById('mpn').textContent=V.price.toFixed(2);
-  document.getElementById('ctap').textContent=V.price.toFixed(2);
-  document.getElementById('pwm').classList.add('show');
+  const k = (trig==='filter'||trig==='grid'||trig==='grid_1x1') ? 'premium' : 'expired';
+  const c = PW_COPY[k], q = id => document.getElementById(id);
+  document.querySelector('#pwm .mbadge').innerHTML = c.badge;
+  document.querySelector('#pwm .mtitle').innerHTML = c.title;
+  document.querySelector('#pwm .msub').innerHTML   = c.sub;
+  q('subbtn').innerHTML = c.cta;
+  q('disbtn').innerHTML = c.dis;
+  q('cdl').style.display = (k==='premium') ? 'none' : '';
+  q('mpn').textContent=V.price.toFixed(2);
+  q('ctap').textContent=V.price.toFixed(2);
+  q('pwm').classList.add('show');
   A.track('paywall',{trig,copy:V.modal_copy});
 }
 
@@ -1184,10 +1209,8 @@ function renderGrid(ms) {
   g.style.gridTemplateColumns=`repeat(${S.n},1fr)`;
   ms.forEach(m=>g.appendChild(makeTile(m)));
 
-  // Anon: 3x5 live preview grid — no locked tiles, scroll triggers secondary counter
+  // Anon: most-popular preview at the chosen grid size (2x2 / 3x3) — columns follow S.n
   if (!S.user && !S.paid) {
-    g.style.gridTemplateColumns = 'repeat(3,1fr)'; // force 3 cols regardless of S.n
-    g.dataset.n = '3'; // prevent 2x2 fullscreen CSS from collapsing tiles
     initScrollPreview();
     startAnonRotation();
   } else if (S.user && !S.paid) {
@@ -1244,12 +1267,20 @@ document.getElementById('gp').addEventListener('click',e=>{
   S.n=n; load(); A.track('grid_n',{n});
 });
 
-function bindSel(id,key){document.getElementById(id).addEventListener('change',e=>{S.f[key]=e.target.value;load();A.track('filter',{key,val:e.target.value});});}
+function bindSel(id,key){
+  const el=document.getElementById(id); el.dataset.prev=el.value;
+  el.addEventListener('change',e=>{
+    const want=e.target.value;
+    // Premium gate: non-paid can open and browse the options, but selecting reverts and opens the modal
+    if(!S.paid){ e.target.value=e.target.dataset.prev||''; showPW('filter'); A.track('filter_gate',{key,val:want}); return; }
+    e.target.dataset.prev=want; S.f[key]=want; load(); A.track('filter',{key,val:want});
+  });
+}
 bindSel('gsel','gender'); bindSel('ssel','sort'); bindSel('csel','country');
 bindSel('asel','age'); bindSel('bsel','body'); bindSel('esel','ethnicity');
 
 document.getElementById('ti').addEventListener('keydown',e=>{
-  if(e.key==='Enter'){const v=e.target.value.trim();S.f.tag=v;document.querySelectorAll('.cp').forEach(p=>p.classList.toggle('on',p.dataset.tag===v));load();A.track('tag_search',{tag:v});}
+  if(e.key==='Enter'){const v=e.target.value.trim();if(!S.paid){showPW('filter');A.track('filter_gate',{key:'tag',val:v});return;}S.f.tag=v;document.querySelectorAll('.cp').forEach(p=>p.classList.toggle('on',p.dataset.tag===v));load();A.track('tag_search',{tag:v});}
 });
 
 document.getElementById('pbtn').addEventListener('click',()=>{S.paused=!S.paused;document.getElementById('pbtn').textContent=S.paused?'▶':'⏸';S.paused?haltAll():resumeAll();A.track(S.paused?'pause':'play');});
@@ -1368,7 +1399,8 @@ function onLogin(user) {
 
 function gridLimit() {
   if (S.paid) return 36;
-  return V.free_tiles;    // non-paid (anon + free acct): the most-popular streams only
+  const cap = Math.min(S.n * S.n, V.free_tiles);   // 2x2 -> top 4, 3x3 -> top 9
+  return S.user ? Math.max(1, cap - 1) : cap;       // free acct leaves one slot for the CTA tile
 }
 
 function maxGridN() {
@@ -1391,6 +1423,15 @@ function updateGridButtons() {
     if (n === 2) btn.textContent = '2×2';
     if (n === 1) btn.textContent = '1×1 ⭐';
   });
+  // Premium marks on the gated filters: ⭐ prefix for non-paid, clean for paid
+  document.querySelectorAll('select.hsel').forEach(sel => {
+    const o = sel.options[0]; if (!o) return;
+    const base = o.text.replace(/^⭐\s*/, '');
+    o.text = S.paid ? base : '⭐ ' + base;
+  });
+  const ti = document.getElementById('ti'), tico = document.getElementById('tico');
+  if (ti)   ti.placeholder = (S.paid ? '' : '⭐ ') + 'Tag… (Enter)';
+  if (tico) tico.textContent = S.paid ? '🔍' : '⭐';
 }
 
 // ══════════════════════════════════════
@@ -1942,7 +1983,7 @@ async function renderMG() {
 // ══════════════════════════════════════
 function applyGridLayout() {
   const grid = document.getElementById('grid');
-  const effectiveN = (!S.user && !S.paid) ? 3 : S.n;
+  const effectiveN = Math.min(S.n, maxGridN());
   grid.dataset.n = effectiveN;
 }
 

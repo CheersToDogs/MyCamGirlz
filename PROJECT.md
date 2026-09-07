@@ -30,7 +30,8 @@
 - Age gate with VPN badges (NordVPN/ExpressVPN/Surfshark — placeholder URLs, not yet affiliate)
 
 ### Conversion mechanics implemented
-- Anon **and** free accounts see the **5 most-popular** live streams (`V.free_tiles`), 3-col grid
+- Anon **and** free accounts see the most-popular live streams: **top 4 in 2×2, top 9 in 3×3** (`V.free_tiles` = 9 cap). Lands on 3×3
+- **Filters are premium:** the 6 pulldowns + tag search show ⭐. Non-paid can open, browse and type — selecting or pressing Enter opens the premium modal and reverts. Category pills stay free
 - Audio gated behind email capture — clicking 🔇 shows email modal
 - Timer: engagement-triggered (not page load), randomized 90–180s, loss framing "X:XX left"
 - 60–90s stream rotation, rotating only within the top-10 so the preview stays "most popular"
@@ -48,8 +49,8 @@
 ### Access tiers
 | Tier | Streams | Grid | Features | Price |
 |---|---|---|---|---|
-| Anonymous | 5 most popular | 2×2 / 3×3 (3-col forced) | Timer → escalating cooldown loop | Free |
-| Free account | 5 most popular + "Keep Watching" CTA | 2×2 / 3×3 | Audio, favorites, filters; same timer/cooldown | Free + email |
+| Anonymous | top 4 (2×2) / top 9 (3×3) | 2×2 / 3×3 | Filters ⭐ premium-gated; timer → cooldown loop | Free |
+| Free account | top 3 / 8 + "Keep Watching" CTA | 2×2 / 3×3 | Audio, favorites; filters ⭐ premium-gated; same timer/cooldown | Free + email |
 | Paid | 36 | Up to 6×6, 1×1 fullscreen | Everything, no timer, no cooldown | $9.99/mo |
 
 ---
@@ -132,7 +133,7 @@ EC2 security group: port 8880 open to all 15 Cloudflare IP ranges, port 443 open
 ```js
 const V = {
   id:'v1', price:9.99, modal_copy:'A',
-  free_tiles:5,          // non-paid preview: the 5 most-popular streams
+  free_tiles:9,          // non-paid cap: 3x3 = top 9, 2x2 = top 4
   max_paid_grid:6,       // paid: 6x6 = 36
   cooldown_min:20,       // 1st lockout length (minutes)
   cooldown_step_min:10,  // minutes added per successive lockout (escalation)

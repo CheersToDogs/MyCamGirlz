@@ -15,7 +15,7 @@
 
 - **Identity:** `A.identify(user)` on login → `posthog.identify(user.id, {email, tier, verified})` stitches the `fp` history to the account. Paid conversions must be read on the identified user.
 
-## Event taxonomy (41 events)
+## Event taxonomy (42 events)
 
 ### Session & lifecycle
 | event | fires when | props |
@@ -31,6 +31,7 @@
 |---|---|---|
 | `grid_n` | grid size changed (allowed) | `n` |
 | `grid_gate` | paid-only grid size clicked by non-paid → subscription modal | `n` |
+| `filter_gate` | non-paid selected a premium filter or pressed Enter on tag search → premium modal, selection reverted | `key` (`gender`/`sort`/`country`/`age`/`body`/`ethnicity`/`tag`), `val` (what they tried) |
 | `cat` / `tag` / `tag_search` | category pill / tile tag / typed tag | `tag` |
 | `filter` | gender/sort/country/age/body/ethnicity change | `key`, `val` |
 | `tile_click` | tile body clicked | `u`, `vc` (viewers) |
@@ -54,7 +55,7 @@
 ### Paywall & conversion
 | event | fires when | props |
 |---|---|---|
-| `paywall` | subscription modal shown | `trig` ∈ `expired` · `grid` · `grid_1x1` · `scroll_preview` · `resume` (restored from a live cooldown on reload), `copy` (`V.modal_copy`) |
+| `paywall` | subscription modal shown | `trig` ∈ `expired` · `grid` · `grid_1x1` · `filter` · `scroll_preview` · `resume` (restored from a live cooldown on reload), `copy` (`V.modal_copy`) |
 | `subscribe` | "Keep My Access" clicked → CCBill | `price` |
 | `dismiss` | paywall dismissed | — |
 | `keep_watching_click` | free-account CTA tile | `grid` |
@@ -83,6 +84,7 @@ start → loaded → tile_click / interaction → free_start → expired(cyc=0) 
 |---|---|---|
 | **Paywall conversion** | `subscribe` ÷ `paywall`, broken down by `trig` | The headline. `trig=expired` vs `trig=grid` tells you which wall sells. |
 | **Grid-gate conversion** | funnel `grid_gate → subscribe` (same session) | Did making 4×4/6×6 paid-only produce money or just friction? |
+| **Filter-gate conversion** | funnel `filter_gate → subscribe`; also `filter_gate` count by `key` | Which filter people want most = what to headline. Also flags friction if gates spike but never convert. |
 | **Lockout return rate** | `reset` ÷ `expired` where `cyc=0` | Do people come back when the urge returns? **If low → shorten `cooldown_min`.** |
 | **Bonus → convert** | funnel `reset → subscribe` | Does the taste sell? |
 | **Bonus burn** | `expired` where `cyc ≥ 1` ÷ `reset` | People burning bonuses without buying. **If high → shorten `bonus_secs`.** |
@@ -107,4 +109,5 @@ start → loaded → tile_click / interaction → free_start → expired(cyc=0) 
 - `AFF.id` is still empty — `cta` measures clicks, not credited Stripcash revenue, until Stripcash approves.
 
 ## Change log
+- 2026-09-06 — Filters premium-gated: new `filter_gate` event, `paywall.trig` gains `filter`. Free preview now top 4 (2×2) / top 9 (3×3), default 3×3.
 - 2026-09-06 — Canon established. `expired` gained `cyc` so bonus-window expiries are separable from first walls (`faeec1f` shipped the lockout loop; this commit makes it measurable).
