@@ -1,5 +1,5 @@
 # MyCamGirlz — Project State
-**Last Updated:** 2026-09-07
+**Last Updated:** 2026-09-08
 **Live URL:** https://mycamgirlz.com
 **Repo:** https://github.com/CheersToDogs/MyCamGirlz (PUBLIC — never commit secrets)
 **Deploy:** push from the EC2 working copy `/home/ubuntu/projects/mycamgirlz-web` → SSH remote `git@github-account:CheersToDogs/MyCamGirlz.git` → Cloudflare Pages auto-deploys (~60–80s, no build step). **Do NOT push from the Windows node or a container** — pushes originate on EC2.
@@ -26,7 +26,7 @@
 - Password login for paid users (PBKDF2-HMAC-SHA256)
 - `/api/health` → `{"ok":true}` ✓
 - `/api/auth/me` → `{"detail":"Not authenticated"}` ✓
-- Geo-blocking: 24 states with active AV laws → HTTP 451 (functions/_middleware.js); legal paths exempt so Terms/Privacy/etc stay reachable everywhere
+- Geo-blocking: 24 states with active AV laws → HTTP 451 (functions/_middleware.js); legal paths exempt so Terms/Privacy/etc stay reachable everywhere. **Fail-closed (commit 1353aee):** a US visitor whose region Cloudflare can't resolve is blocked too (was fail-open). `/ingest/*` analytics proxy is exempt like `/api/*`.
 - Age gate with VPN badges (NordVPN/ExpressVPN/Surfshark — placeholder URLs, not yet affiliate)
 - **Compliance pages SHIPPED (commit 0286794):** static Terms / Privacy / Refund / 2257 / DMCA / Contact pages at repo root; age-gate + footer + signup links repointed to them; dead in-app legal overlay removed (kills stale 2257 + legal@/privacy@ bounce mail)
 - **Timeout paywall is a HARD WALL (commit 500ff0d):** during an active cooldown (`S.cd`) the dismiss button is non-interactive (`#disbtn.hardlock` → pointer-events:none) and background-click + Escape are gated — the only exits are subscribe or wait out the cooldown. Premium (filter/grid) soft-nudge keeps its "Not now". The `dismiss` analytics event is retired
@@ -84,7 +84,10 @@
 ## PENDING (no blockers — build when ready)
 
 - Notification watcher — background process alerts users when favorites go live
-- **PostHog reverse-proxy** — events post direct to `us.i.posthog.com`, so ad/tracker blockers drop some. Proxy through a first-party path (Pages Function or `/e/` route) to recover them.
+
+### Shipped 2026-09-08
+- **PostHog first-party reverse-proxy LIVE (commits e383ac5 + 1353aee)** — `functions/ingest/[[path]].js` proxies analytics first-party to beat ad/tracker blockers. Routing per PostHog self-hosted proxy reference: `/static/*` + `/array/*` → `us-assets.i.posthog.com` (SDK + remote config), everything else → `us.i.posthog.com` (capture/flags/decide). Forwards `CF-Connecting-IP` as `X-Forwarded-For`; upstream `Host` derived from the fetch URL (wrong Host → 401). `index.html` `api_host` → `https://mycamgirlz.com/ingest`. Verified live: `/ingest/static/array.js` → 200 JS (287 KB); `/ingest/i/v0/e/` reaches PostHog (400 on empty GET, not 451/404); site `/` still 451 in blocked regions; `/api/*` unaffected.
+- **AV geo-block hardened to fail-closed (commit 1353aee)** — `_middleware.js` now blocks `country==='US' && (regionCode==='' || BLOCKED_STATES.has(regionCode))`. Previously an unresolved US region fell through (leak into AV-law states). Tradeoff: over-blocks US visitors on a CF region-lookup miss. `/ingest/*` added to the geo-block exemption alongside `/api/*`.
 
 ### Shipped this session (2026-09-07) — backend was well ahead of the old PENDING list
 - **Rate limiting on `/auth/magic`** — in-memory per-IP (10 / 15 min) + per-email (4 / 15 min) → HTTP 429. Protects SES quota + link spam. Single-process uvicorn, in-memory buckets; keys prune on window expiry.
@@ -111,7 +114,7 @@
 
 ## KNOWN BUGS / ISSUES
 
-- **AV geo-block has no WAF backstop (free CF plan):** the state block lives entirely in `functions/_middleware.js` (a Pages Function). The free Cloudflare plan has no custom WAF geo-rules, so there is no edge-level backstop — if the middleware is bypassed or errors, blocked-state traffic is not stopped. Mitigation: keep the middleware fail-closed; move to a paid CF plan with WAF geo-rules before scaling traffic.
+- **AV geo-block has no WAF backstop (free CF plan):** the state block lives entirely in `functions/_middleware.js` (a Pages Function). The free Cloudflare plan has no custom WAF geo-rules, so there is no edge-level backstop — if the middleware is bypassed or errors, blocked-state traffic is not stopped. The middleware is now **fail-closed** on unresolved US regions (commit 1353aee). **Residual gap:** requests where CF resolves no country at all (`country===''`) are NOT blocked — left as-is because the block page is US-state-framed and blocking all unknown-country traffic would over-block legitimate international users. Move to a paid CF plan with WAF geo-rules before scaling traffic.
 
 ---
 
