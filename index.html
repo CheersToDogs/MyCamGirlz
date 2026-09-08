@@ -969,8 +969,8 @@ function showPW(trig) {
 function destroyAll() {
   // Flush any active watch time before destroying
   Object.keys(_watchStart).forEach(u => trackWatchEnd(u));
-  document.querySelectorAll('#grid video').forEach(v=>{ clearTimeout(v._nst); v._pbDone=true; });
-  Object.values(S.hls).forEach(h=>{try{h.destroy()}catch(e){}});
+  document.querySelectorAll('#grid video').forEach(v=>{ clearTimeout(v._nst); clearTimeout(v._rt); v._pbDone=true; });
+  Object.values(S.hls).forEach(h=>{try{clearTimeout(h._rt);h.destroy()}catch(e){}});
   S.hls={}; S.at=null;
 }
 // ── PLAYBACK SUCCESS TRACKING (measures static-poster / no-start rate) ──
@@ -985,8 +985,7 @@ function trackPlayback(vid, hls, username){
     A.track('video_playback', Object.assign({outcome, ttfp_ms: Math.round(performance.now()-t0)}, extra||{}));
   };
   vid.addEventListener('playing', ()=>fire('playing'), {once:true});
-  if(hls){ hls.on(Hls.Events.ERROR,(e,d)=>{ if(d&&d.fatal) fire('error',{reason:(d.details||d.type||'fatal')}); }); }
-  vid._nst = setTimeout(()=>fire('no_start',{reason:'timeout'}), 7000);
+  vid._nst = setTimeout(()=>fire(vid._failReason?'error':'no_start', {reason: vid._failReason||'timeout'}), 10000);
 }
 function haltAll() { document.querySelectorAll('#grid video').forEach(v=>v.pause()); }
 function resumeAll() { document.querySelectorAll('#grid video').forEach(v=>v.play().catch(()=>{})); }
@@ -1033,12 +1032,20 @@ function makeTile(m) {
   if(url&&Hls.isSupported()){
     const h=new Hls({strictManifestParsing:false,maxBufferLength:10,maxMaxBufferLength:20,liveSyncDurationCount:3});
     h.loadSource(url); h.attachMedia(vid);
-    h.on(Hls.Events.MANIFEST_PARSED,()=>{vid.play().catch(()=>{});snap.classList.add('h');sp.remove();});
-    h.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal)snap.classList.remove('h');});
+    h.on(Hls.Events.MANIFEST_PARSED,()=>{h._retries=0;vid.play().catch(()=>{});snap.classList.add('h');sp.remove();});
+    h._retries=0;
+    h.on(Hls.Events.ERROR,(e,d)=>{
+      if(!d.fatal) return;
+      if(d.type===Hls.ErrorTypes.MEDIA_ERROR && h._retries<4){ h._retries++; try{h.recoverMediaError();}catch(_){} return; }
+      if(d.type===Hls.ErrorTypes.NETWORK_ERROR && h._retries<4){ h._retries++; h._rt=setTimeout(()=>{try{h.startLoad();}catch(_){}}, Math.min(1000*h._retries,4000)); return; }
+      vid._failReason=(d.details||d.type||'fatal'); try{h.destroy();}catch(_){}
+      if(sp)sp.remove(); snap.classList.remove('h');
+    });
     S.hls[m.username]=h;
     trackPlayback(vid,h,m.username);
   } else if(vid.canPlayType('application/vnd.apple.mpegurl')){
     vid.src=url; vid.play().catch(()=>{}); snap.classList.add('h'); sp.remove();
+    vid._nr=0; vid.addEventListener('error',()=>{ if(vid._nr++<3){ vid._rt=setTimeout(()=>{try{vid.load();vid.play().catch(()=>{});}catch(_){}}, Math.min(1000*vid._nr,4000)); } else { vid._failReason=vid._failReason||'native_error'; snap.classList.remove('h'); } });
     trackPlayback(vid,null,m.username);
   }
   if(S.cd) tile.classList.add('bl');
