@@ -1,5 +1,5 @@
 # MyCamGirlz — Rules & Session Protocol
-**Last Updated:** 2026-05-29
+**Last Updated:** 2026-09-07
 
 ---
 
@@ -74,16 +74,16 @@ done
 
 ## Git Protocol
 
-**Working push path:** Ken's Windows repo `C:\Users\kb\Projects\MyCamGirlz` — `git add index.html && git commit -m "..." && git push`. Credential Manager supplies auth; **no token needed**. (This is how `ddbf4f3` shipped.) The token method below is the alternate for container-side pushes only.
+**Working push path (current):** the EC2 working copy `/home/ubuntu/projects/mycamgirlz-web`, pushing over the SSH remote `git@github-account:CheersToDogs/MyCamGirlz.git` (host alias `github-account` in `~/.ssh/config`). No token needed.
 
 ```bash
-TOKEN="ghp_..."  # ask Ken for current token — do not store in repo
-cd /home/claude/MyCamGirlz
-git add index.html functions/
-git commit -m "Fix: what broke and how / Add: feature / Update: what changed"
-git push https://${TOKEN}@github.com/CheersToDogs/MyCamGirlz.git main
-git remote set-url origin https://github.com/CheersToDogs/MyCamGirlz.git  # scrub token
+cd /home/ubuntu/projects/mycamgirlz-web
+git add index.html functions/      # scoped adds ONLY — never `git add -A` (untracked *.bak files live here)
+git commit -m "Fix/Add/Update: what changed"
+git push origin main               # -> Cloudflare Pages auto-deploys (~60-80s, no build step)
 ```
+
+**Do NOT** push from the Windows node or a Claude container, and do NOT use the old `ghp_...` PAT — it is revoked/dead (403). The SSH remote authenticates with the deploy key already on the box.
 
 After push, wait ~60s for Cloudflare Pages deploy.
 
