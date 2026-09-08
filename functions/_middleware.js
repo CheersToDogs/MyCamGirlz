@@ -93,7 +93,10 @@ export async function onRequest(context) {
   const country = cf.country || '';
   const regionCode = cf.regionCode || '';
 
-  if (country === 'US' && BLOCKED_STATES.has(regionCode)) {
+  // Fail-closed: a US visitor whose region Cloudflare cannot resolve is treated
+  // as blocked. AV laws are US-state-specific, so an unresolved US region could
+  // be a blocked state — over-block rather than leak adult content into one.
+  if (country === 'US' && (regionCode === '' || BLOCKED_STATES.has(regionCode))) {
     return new Response(BLOCKED_HTML, {
       status: 451, // 451 Unavailable For Legal Reasons — correct HTTP status for this
       headers: {
