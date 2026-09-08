@@ -57,8 +57,11 @@
 |---|---|---|
 | `paywall` | subscription modal shown | `trig` ∈ `expired` · `grid` · `grid_1x1` · `filter` · `scroll_preview` · `resume` (restored from a live cooldown on reload), `copy` (`V.modal_copy`) |
 | `subscribe` | "Keep My Access" clicked → CCBill | `price` |
+| `purchase` | **server-side** — CCBill webhook on `NewSaleSuccess`/`RenewalSuccess` | `processor` · `ccbill_event` · `subscription_id` · `amount` |
 | `keep_watching_click` | free-account CTA tile | `grid` |
 | `signup_tile_click` | signup tile | `type` free/paid |
+
+> **`purchase` is server-emitted** by the CCBill webhook (`auth_api.py`), not `A.track`. It carries `distinct_id` = the DB user id so it lands on the same PostHog person as the client `identify(user.id)` — that stitch makes paid conversion measurable end-to-end.
 
 ### Auth & email
 | event | fires when | props |
@@ -102,12 +105,13 @@ start → loaded → tile_click / interaction → free_start → expired(cyc=0) 
 4. Record the result in PROJECT.md before changing the next knob.
 
 ## Gaps (known, honest)
-- **No server-side revenue event.** `subscribe` = click. Add a PostHog capture in the CCBill webhook handler on `NewSaleSuccess` (`purchase`, `{amount, user_id}`) so real revenue is in the same tool as the funnel.
+- ~~No server-side revenue event.~~ **CLOSED (2026-09-07):** the CCBill webhook now fires `purchase` server-side on `NewSaleSuccess`/`RenewalSuccess` (`distinct_id` = user id, props `processor`/`ccbill_event`/`subscription_id`/`amount`). `subscribe` remains the click-intent signal; `purchase` is the revenue truth.
 - `scroll_preview_expire` is near-dead with 5 tiles (nothing to scroll). Keep the event; don't build KPIs on it.
 - Anon → identified stitching depends on `posthog.identify` at login. Anonymous conversions that never log in are only attributable via `fp`.
 - `AFF.id` is still empty — `cta` measures clicks, not credited Stripcash revenue, until Stripcash approves.
 
 ## Change log
+- 2026-09-07 — **`purchase` event ADDED (server-side).** Emitted by the CCBill webhook on `NewSaleSuccess`/`RenewalSuccess` (`distinct_id` = user id; props `processor`/`ccbill_event`/`subscription_id`/`amount`). Closes the "no server-side revenue event" gap. Also shipped this session: in-memory rate limit on `/auth/magic` (per-IP 10 / per-email 4 per 15 min → 429).
 - 2026-09-07 — **`dismiss` event REMOVED** (retired). The timeout paywall is now a hard wall: during an active cooldown `#disbtn` is `pointer-events:none` and bg-click/Escape are gated, so there is nothing to "dismiss" — the only exits are subscribe or wait out the cooldown. The premium (filter/grid) soft-nudge still closes on "Not now" but no longer emits an event. (commit 500ff0d)
 - 2026-09-07 — Doc accuracy: `autocapture` is OFF (was mis-stated as on); fragile event-count header dropped.
 - 2026-09-06 — Filters premium-gated: new `filter_gate` event, `paywall.trig` gains `filter`. Free preview now top 4 (2×2) / top 9 (3×3), default 3×3.

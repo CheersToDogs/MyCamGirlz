@@ -83,11 +83,17 @@
 
 ## PENDING (no blockers — build when ready)
 
-- Rate limiting on `/auth/magic` (currently none — SES quota at risk from spam)
-- Admin endpoint to manually upgrade user tier (useful for CCBill testing)
-- **Analytics — partial (see ANALYTICS.md):** client-side PostHog IS wired and sending — `posthog.init` with the live project token at boot, `A.track → posthog.capture` (autocapture off; explicit events + pageview/pageleave only). **UNWIRED:** no server-side revenue event — the CCBill webhook emits no PostHog `purchase`, so `subscribe` (click-intent) is the only conversion signal and true paid revenue is absent from the funnel. Events post direct to `us.i.posthog.com` (not reverse-proxied → adblock loss). (The old `A.ep` custom-endpoint design is gone.)
 - Notification watcher — background process alerts users when favorites go live
-- `POST /auth/set-password` frontend UI (backend exists, no UI yet)
+- **PostHog reverse-proxy** — events post direct to `us.i.posthog.com`, so ad/tracker blockers drop some. Proxy through a first-party path (Pages Function or `/e/` route) to recover them.
+
+### Shipped this session (2026-09-07) — backend was well ahead of the old PENDING list
+- **Rate limiting on `/auth/magic`** — in-memory per-IP (10 / 15 min) + per-email (4 / 15 min) → HTTP 429. Protects SES quota + link spam. Single-process uvicorn, in-memory buckets; keys prune on window expiry.
+- **Server-side revenue event WIRED** — the CCBill webhook fires a fire-and-forget PostHog `purchase` on `NewSaleSuccess`/`RenewalSuccess`, `distinct_id` = user id (stitches to the client funnel). `subscribe` stays click-intent; `purchase` is the conversion truth. Isolated in `asyncio.create_task` + try/except so it can never delay or break the webhook 200.
+- **`/auth/set-password` + `/auth/login` UI already present** (index.html ~1336 / 1442 / 1511) — the old "no UI yet" note was stale.
+- **`/admin/set-tier`** — manual tier flip (`X-Admin-Token` header or `?k=`), for CCBill testing/support.
+- **CCBill webhook state machine (backend, live)** — `NewSaleSuccess`/`RenewalSuccess` → paid (+`period_end` +32d, `subscription_id`, `sub_status`, `processor`); `Cancellation` → cancelled; `Expiration`/`Chargeback`/`Refund`/`Void`/`Failure` → free. Fail-closed `?k=` shared secret; every event audited to `billing_events`. Subscription state lives in `users` columns + `billing_events` — no separate table needed. Still blocked on the live CCBill `clientSubacc` URL to drive real sales (see `CCBILL_URL` placeholder above).
+
+> **Backend deploy model:** `mcg-auth` (`auth_api.py`) is deployed in-place on EC2 (NOT in this repo) and reloaded via `sudo systemctl restart mcg-auth`; each edit keeps a timestamped `.bak`. Only `index.html` + `functions/` + docs live in git.
 
 ---
 
