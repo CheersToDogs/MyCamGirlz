@@ -78,7 +78,9 @@ export async function onRequest(context) {
   // Only apply geo-block to page requests (not API calls — those handle auth separately)
   // Also skip for Cloudflare's own health checks
   const url = new URL(request.url);
-  if (url.pathname.startsWith('/api/')) {
+  // /api/* (auth proxy) and /ingest/* (PostHog analytics proxy) are
+  // infrastructure, not content — never geo-block them.
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ingest/')) {
     return next();
   }
 
