@@ -969,8 +969,24 @@ function showPW(trig) {
 function destroyAll() {
   // Flush any active watch time before destroying
   Object.keys(_watchStart).forEach(u => trackWatchEnd(u));
+  document.querySelectorAll('#grid video').forEach(v=>{ clearTimeout(v._nst); v._pbDone=true; });
   Object.values(S.hls).forEach(h=>{try{h.destroy()}catch(e){}});
   S.hls={}; S.at=null;
+}
+// ── PLAYBACK SUCCESS TRACKING (measures static-poster / no-start rate) ──
+const _pbSeen = new Set();
+function trackPlayback(vid, hls, username){
+  if(_pbSeen.has(username)) return;            // one sample per model per session (bounds event volume)
+  _pbSeen.add(username);
+  const t0 = performance.now();
+  const fire = (outcome, extra) => {
+    if(vid._pbDone) return; vid._pbDone = true;
+    clearTimeout(vid._nst);
+    A.track('video_playback', Object.assign({outcome, ttfp_ms: Math.round(performance.now()-t0)}, extra||{}));
+  };
+  vid.addEventListener('playing', ()=>fire('playing'), {once:true});
+  if(hls){ hls.on(Hls.Events.ERROR,(e,d)=>{ if(d&&d.fatal) fire('error',{reason:(d.details||d.type||'fatal')}); }); }
+  vid._nst = setTimeout(()=>fire('no_start',{reason:'timeout'}), 7000);
 }
 function haltAll() { document.querySelectorAll('#grid video').forEach(v=>v.pause()); }
 function resumeAll() { document.querySelectorAll('#grid video').forEach(v=>v.play().catch(()=>{})); }
@@ -1020,8 +1036,10 @@ function makeTile(m) {
     h.on(Hls.Events.MANIFEST_PARSED,()=>{vid.play().catch(()=>{});snap.classList.add('h');sp.remove();});
     h.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal)snap.classList.remove('h');});
     S.hls[m.username]=h;
+    trackPlayback(vid,h,m.username);
   } else if(vid.canPlayType('application/vnd.apple.mpegurl')){
     vid.src=url; vid.play().catch(()=>{}); snap.classList.add('h'); sp.remove();
+    trackPlayback(vid,null,m.username);
   }
   if(S.cd) tile.classList.add('bl');
   return tile;
